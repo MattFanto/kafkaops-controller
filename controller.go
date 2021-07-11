@@ -262,7 +262,7 @@ func (c *Controller) syncHandler(key string) error {
 		return err
 	}
 
-	deploymentName := foo.Spec.DeploymentName
+	deploymentName := foo.Spec.TopicName
 	if deploymentName == "" {
 		// We choose to absorb the error here as the worker would requeue the
 		// resource otherwise. Instead, the next time the resource is updated
@@ -332,12 +332,7 @@ func (c *Controller) updateFooStatus(foo *samplev1alpha1.Foo, deployment *kafkao
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
 	fooCopy := foo.DeepCopy()
-	if deployment.TopicStatus == "EXISTS" {
-		// TODO just a very dirty workaround to see if it works
-		fooCopy.Status.AvailableReplicas = 100
-	} else {
-		fooCopy.Status.AvailableReplicas = 0
-	}
+	fooCopy.Status = deployment.TopicStatus
 	// If the CustomResourceSubresources feature gate is not enabled,
 	// we must use Update instead of UpdateStatus to update the Status block of the Foo resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,

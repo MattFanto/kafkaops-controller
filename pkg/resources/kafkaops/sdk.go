@@ -10,7 +10,7 @@ import (
 
 type KafkaTopicStatus struct {
 	TopicName   string
-	TopicStatus string
+	TopicStatus v1alpha1.TopicStatusCode
 }
 
 func getClient() (*kafka.AdminClient, error) {
@@ -43,7 +43,7 @@ func CreateFooTopic(spec v1alpha1.FooSpec) (*KafkaTopicStatus, error) {
 		// Multiple topics can be created simultaneously
 		// by providing more TopicSpecification structs here.
 		[]kafka.TopicSpecification{{
-			Topic:             spec.DeploymentName,
+			Topic:             spec.TopicName,
 			NumPartitions:     int(*spec.Replicas),
 			ReplicationFactor: int(*spec.Replicas)}},
 		// Admin options
@@ -84,11 +84,11 @@ func GetTopicStatus(spec *v1alpha1.FooSpec) (*KafkaTopicStatus, error) {
 
 	dur, _ := time.ParseDuration("20s")
 	results, err := a.DescribeConfigs(ctx,
-		[]kafka.ConfigResource{{Type: kafka.ResourceTopic, Name: spec.DeploymentName}},
+		[]kafka.ConfigResource{{Type: kafka.ResourceTopic, Name: spec.TopicName}},
 		kafka.SetAdminRequestTimeout(dur))
 	if err != nil {
 		fmt.Printf("Failed to DescribeConfigs(%s, %s): %s\n",
-			kafka.ResourceTopic, spec.DeploymentName, err)
+			kafka.ResourceTopic, spec.TopicName, err)
 		return nil, err
 	}
 	if len(results) != 1 {
@@ -100,15 +100,15 @@ func GetTopicStatus(spec *v1alpha1.FooSpec) (*KafkaTopicStatus, error) {
 	/**
 	TODO remap errors
 	*/
-	status := "UNCHECKED"
+	status := v1alpha1.UNKNOWN
 	if result.Error.Code() == kafka.ErrNoError {
-		status = "EXISTS"
+		status = v1alpha1.EXISTS
 	} else if result.Error.Code() == kafka.ErrUnknownTopicOrPart {
-		status = "NOT_EXISTS"
+		status = v1alpha1.NOT_EXISTS
 	}
 
 	return &KafkaTopicStatus{
-		TopicName:   spec.DeploymentName,
+		TopicName:   spec.TopicName,
 		TopicStatus: status,
 	}, nil
 }
