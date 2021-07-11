@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"go/types"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -270,12 +271,18 @@ func (c *Controller) syncHandler(key string) error {
 		return nil
 	}
 
+	/**
+	TODO this will be replaced by some sdk func to list topics
+
 	// Get the deployment with the name specified in Foo.spec
 	deployment, err := c.deploymentsLister.Deployments(foo.Namespace).Get(deploymentName)
 	// If the resource doesn't exist, we'll create it
 	if errors.IsNotFound(err) {
-		deployment, err = c.kubeclientset.AppsV1().Deployments(foo.Namespace).Create(context.TODO(), newDeployment(foo), metav1.CreateOptions{})
+		deployment, err = newDeployment(foo)
 	}
+	*/
+	deployment, err := newDeployment(foo)
+	klog.Info(deployment)
 
 	// If an error occurs during Get/Create, we'll requeue the item so we can
 	// attempt processing again later. This could have been caused by a
@@ -284,6 +291,8 @@ func (c *Controller) syncHandler(key string) error {
 		return err
 	}
 
+	/**
+	TODO do I need this?
 	// If the Deployment is not controlled by this Foo resource, we should log
 	// a warning to the event recorder and return error msg.
 	if !metav1.IsControlledBy(deployment, foo) {
@@ -291,6 +300,10 @@ func (c *Controller) syncHandler(key string) error {
 		c.recorder.Event(foo, corev1.EventTypeWarning, ErrResourceExists, msg)
 		return fmt.Errorf(msg)
 	}
+	*/
+
+	/**
+	TODO nice to have regarding topic config
 
 	// If this number of the replicas on the Foo resource is specified, and the
 	// number does not equal the current desired replicas on the Deployment, we
@@ -299,6 +312,7 @@ func (c *Controller) syncHandler(key string) error {
 		klog.V(4).Infof("Foo %s replicas: %d, deployment replicas: %d", name, *foo.Spec.Replicas, *deployment.Spec.Replicas)
 		deployment, err = c.kubeclientset.AppsV1().Deployments(foo.Namespace).Update(context.TODO(), newDeployment(foo), metav1.UpdateOptions{})
 	}
+	*/
 
 	// If an error occurs during Update, we'll requeue the item so we can
 	// attempt processing again later. This could have been caused by a
@@ -307,12 +321,16 @@ func (c *Controller) syncHandler(key string) error {
 		return err
 	}
 
-	// Finally, we update the status block of the Foo resource to reflect the
-	// current state of the world
-	err = c.updateFooStatus(foo, deployment)
-	if err != nil {
-		return err
-	}
+	/*
+		TODO important it should accept new TopicStatus type instead of deployment
+
+		// Finally, we update the status block of the Foo resource to reflect the
+		// current state of the world
+		err = c.updateFooStatus(foo, deployment)
+		if err != nil {
+			return err
+		}
+	*/
 
 	c.recorder.Event(foo, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
@@ -388,37 +406,9 @@ func (c *Controller) handleObject(obj interface{}) {
 // newDeployment creates a new Deployment for a Foo resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the Foo resource that 'owns' it.
-func newDeployment(foo *samplev1alpha1.Foo) *appsv1.Deployment {
-	labels := map[string]string{
-		"app":        "nginx",
-		"controller": foo.Name,
-	}
-	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      foo.Spec.DeploymentName,
-			Namespace: foo.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(foo, samplev1alpha1.SchemeGroupVersion.WithKind("Foo")),
-			},
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: foo.Spec.Replicas,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "nginx",
-							Image: "nginx:latest",
-						},
-					},
-				},
-			},
-		},
-	}
+//
+// This will now create a new topic
+func newDeployment(foo *samplev1alpha1.Foo) (types.Object, error) {
+	klog.Infof("Creating topic named '%s'", foo.Spec.DeploymentName)
+	return nil, nil
 }
