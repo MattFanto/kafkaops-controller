@@ -6,6 +6,7 @@ go 1.16
 
 require (
 	github.com/confluentinc/confluent-kafka-go v1.7.0 // indirect
+	github.com/stretchr/testify v1.7.0 // indirect
 	gopkg.in/confluentinc/confluent-kafka-go.v1 v1.7.0 // indirect
 	k8s.io/api v0.0.0-20210708014407-1e1dad4bd9d1
 	k8s.io/apimachinery v0.0.0-20210708014216-0dafcb48b31e

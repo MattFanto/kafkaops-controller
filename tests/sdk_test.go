@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"github.com/stretchr/testify/assert"
 	"k8s.io/sample-controller/pkg/apis/samplecontroller/v1alpha1"
 	"k8s.io/sample-controller/pkg/resources/kafkaops"
 	"testing"
@@ -20,11 +21,11 @@ func TestCreateTopic(t *testing.T) {
 
 func TestGetStatus(t *testing.T) {
 	topicStatus, err := kafkaops.GetTopicStatus(&v1alpha1.FooSpec{
-		DeploymentName: "example_topic_v1",
+		DeploymentName: "example_topic_not",
 		Replicas:       int32Ptr(1),
 	})
 	if err != nil {
 		return
 	}
-	print(topicStatus)
+	assert.Equal(t, "NOT_EXISTS", topicStatus.TopicStatus, "Expected topic to not exists")
 }

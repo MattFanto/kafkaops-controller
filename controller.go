@@ -19,7 +19,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"go/types"
 	"k8s.io/sample-controller/pkg/resources/kafkaops"
 	"time"
 
@@ -272,17 +271,12 @@ func (c *Controller) syncHandler(key string) error {
 		return nil
 	}
 
-	/**
-	TODO this will be replaced by some sdk func to list topics
-
 	// Get the deployment with the name specified in Foo.spec
-	deployment, err := c.deploymentsLister.Deployments(foo.Namespace).Get(deploymentName)
+	deployment, err := checkDeployment(foo)
 	// If the resource doesn't exist, we'll create it
 	if errors.IsNotFound(err) {
 		deployment, err = newDeployment(foo)
 	}
-	*/
-	deployment, err := newDeployment(foo)
 	klog.Info(deployment)
 
 	// If an error occurs during Get/Create, we'll requeue the item so we can
@@ -409,11 +403,20 @@ func (c *Controller) handleObject(obj interface{}) {
 // the Foo resource that 'owns' it.
 //
 // This will now create a new topic
-func newDeployment(foo *samplev1alpha1.Foo) (types.Object, error) {
+func newDeployment(foo *samplev1alpha1.Foo) (*kafkaops.KafkaTopicStatus, error) {
 	topic, err := kafkaops.CreateFooTopic(foo.Spec)
 	if err != nil {
 		return nil, err
 	}
 	klog.Infof("Created topic named '%s'", topic.TopicName)
-	return nil, nil
+	return topic, nil
+}
+
+func checkDeployment(foo *samplev1alpha1.Foo) (*kafkaops.KafkaTopicStatus, error) {
+	topic, err := kafkaops.GetTopicStatus(&foo.Spec)
+	if err != nil {
+		return nil, err
+	}
+	klog.Infof("Topic status '%s'", topic.TopicStatus)
+	return topic, nil
 }

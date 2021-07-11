@@ -100,12 +100,15 @@ func GetTopicStatus(spec *v1alpha1.FooSpec) (*KafkaTopicStatus, error) {
 	/**
 	TODO remap errors
 	*/
-	if result.Error.Code() == kafka.ErrTopicAlreadyExists {
-
+	status := "UNCHECKED"
+	if result.Error.Code() == kafka.ErrNoError {
+		status = "EXISTS"
+	} else if result.Error.Code() == kafka.ErrUnknownTopicOrPart {
+		status = "NOT_EXISTS"
 	}
 
 	return &KafkaTopicStatus{
 		TopicName:   spec.DeploymentName,
-		TopicStatus: "EXIST",
+		TopicStatus: status,
 	}, nil
 }
