@@ -8,14 +8,12 @@ import (
 	"time"
 )
 
-type ImportMe interface{}
+type KafkaTopicStatus struct {
+	TopicName   string
+	TopicStatus string
+}
 
-func CreateFooTopic(spec v1alpha1.FooSpec) (interface{}, error) {
-	maxDur, err := time.ParseDuration("60s")
-	if err != nil {
-		panic("ParseDuration(60s)")
-	}
-
+func getClient() (*kafka.AdminClient, error) {
 	cf := kafka.ConfigMap{
 		"bootstrap.servers": "localhost:9092",
 	}
@@ -23,7 +21,18 @@ func CreateFooTopic(spec v1alpha1.FooSpec) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	return a, nil
+}
 
+func CreateFooTopic(spec v1alpha1.FooSpec) (*KafkaTopicStatus, error) {
+	maxDur, err := time.ParseDuration("60s")
+	if err != nil {
+		panic("ParseDuration(60s)")
+	}
+	a, err := getClient()
+	if err != nil {
+		return nil, err
+	}
 	// Contexts are used to abort or limit the amount of time
 	// the Admin call blocks waiting for a result.
 	ctx, cancel := context.WithCancel(context.Background())
@@ -46,13 +55,57 @@ func CreateFooTopic(spec v1alpha1.FooSpec) (interface{}, error) {
 	if len(results) != 1 {
 		panic("Expected one results after issuing create for one topic")
 	}
+	a.Close()
+	result := results[0]
 
-	// Print results
-	for _, result := range results {
-		fmt.Printf("%s\n", result)
+	/**
+	TODO remap errors
+	*/
+	if result.Error.Code() == kafka.ErrTopicAlreadyExists {
+
 	}
 
-	a.Close()
+	return &KafkaTopicStatus{
+		TopicName:   result.Topic,
+		TopicStatus: "UNCHECKED",
+	}, nil
+}
 
-	return results, nil
+func GetTopicStatus(spec *v1alpha1.FooSpec) (*KafkaTopicStatus, error) {
+
+	a, err := getClient()
+	if err != nil {
+		return nil, err
+	}
+	// Contexts are used to abort or limit the amount of time
+	// the Admin call blocks waiting for a result.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	dur, _ := time.ParseDuration("20s")
+	results, err := a.DescribeConfigs(ctx,
+		[]kafka.ConfigResource{{Type: kafka.ResourceTopic, Name: spec.DeploymentName}},
+		kafka.SetAdminRequestTimeout(dur))
+	if err != nil {
+		fmt.Printf("Failed to DescribeConfigs(%s, %s): %s\n",
+			kafka.ResourceTopic, spec.DeploymentName, err)
+		return nil, err
+	}
+	if len(results) != 1 {
+		panic("Expected one results after issuing create for one topic")
+	}
+	result := results[0]
+
+	a.Close()
+	/**
+	TODO remap errors
+	*/
+	if result.Error.Code() == kafka.ErrTopicAlreadyExists {
+
+	}
+
+	return &KafkaTopicStatus{
+		TopicName:   spec.DeploymentName,
+		TopicStatus: "EXIST",
+	}, nil
 }

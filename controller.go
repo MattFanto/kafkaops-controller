@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"go/types"
+	"k8s.io/sample-controller/pkg/resources/kafkaops"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -409,6 +410,10 @@ func (c *Controller) handleObject(obj interface{}) {
 //
 // This will now create a new topic
 func newDeployment(foo *samplev1alpha1.Foo) (types.Object, error) {
-	klog.Infof("Creating topic named '%s'", foo.Spec.DeploymentName)
+	topic, err := kafkaops.CreateFooTopic(foo.Spec)
+	if err != nil {
+		return nil, err
+	}
+	klog.Infof("Created topic named '%s'", topic.TopicName)
 	return nil, nil
 }

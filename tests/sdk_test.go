@@ -17,3 +17,14 @@ func TestCreateTopic(t *testing.T) {
 		return
 	}
 }
+
+func TestGetStatus(t *testing.T) {
+	topicStatus, err := kafkaops.GetTopicStatus(&v1alpha1.FooSpec{
+		DeploymentName: "example_topic_v1",
+		Replicas:       int32Ptr(1),
+	})
+	if err != nil {
+		return
+	}
+	print(topicStatus)
+}
