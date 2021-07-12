@@ -1,9 +1,9 @@
 package tests
 
 import (
+	"github.com/mattfanto/kafkaops-controller/pkg/apis/kafkaopscontroller/v1alpha1"
+	"github.com/mattfanto/kafkaops-controller/pkg/resources/kafkaops"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/sample-controller/pkg/apis/samplecontroller/v1alpha1"
-	"k8s.io/sample-controller/pkg/resources/kafkaops"
 	"testing"
 )
 

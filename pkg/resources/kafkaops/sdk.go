@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"k8s.io/sample-controller/pkg/apis/samplecontroller/v1alpha1"
+	"github.com/mattfanto/kafkaops-controller/pkg/apis/kafkaopscontroller/v1alpha1"
 	"time"
 )
 

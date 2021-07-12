@@ -7,7 +7,7 @@ metadata:
   annotations:
     "api-approved.kubernetes.io": "unapproved, experimental-only; please get an approval from Kubernetes API reviewers if you're trying to develop a CRD in the *.k8s.io or *.kubernetes.io groups"
 spec:
-  group: samplecontroller.k8s.io
+  group: kafkaopscontroller.k8s.io
   versions:
     - name: v1alpha1
       served: true

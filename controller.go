@@ -19,7 +19,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"k8s.io/sample-controller/pkg/resources/kafkaops"
+	"github.com/mattfanto/kafkaops-controller/pkg/resources/kafkaops"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -38,11 +38,11 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 
-	samplev1alpha1 "k8s.io/sample-controller/pkg/apis/samplecontroller/v1alpha1"
-	clientset "k8s.io/sample-controller/pkg/generated/clientset/versioned"
-	samplescheme "k8s.io/sample-controller/pkg/generated/clientset/versioned/scheme"
-	informers "k8s.io/sample-controller/pkg/generated/informers/externalversions/samplecontroller/v1alpha1"
-	listers "k8s.io/sample-controller/pkg/generated/listers/samplecontroller/v1alpha1"
+	samplev1alpha1 "github.com/mattfanto/kafkaops-controller/pkg/apis/kafkaopscontroller/v1alpha1"
+	clientset "github.com/mattfanto/kafkaops-controller/pkg/generated/clientset/versioned"
+	samplescheme "github.com/mattfanto/kafkaops-controller/pkg/generated/clientset/versioned/scheme"
+	informers "github.com/mattfanto/kafkaops-controller/pkg/generated/informers/externalversions/kafkaopscontroller/v1alpha1"
+	listers "github.com/mattfanto/kafkaops-controller/pkg/generated/listers/kafkaopscontroller/v1alpha1"
 )
 
 const controllerAgentName = "sample-controller"
@@ -340,7 +340,7 @@ func (c *Controller) updateFooStatus(foo *samplev1alpha1.Foo, topicStatus *sampl
 	// we must use Update instead of UpdateStatus to update the Status block of the Foo resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
 	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := c.sampleclientset.SamplecontrollerV1alpha1().Foos(foo.Namespace).Update(context.TODO(), fooCopy, metav1.UpdateOptions{})
+	_, err := c.sampleclientset.KafkaopscontrollerV1alpha1().Foos(foo.Namespace).Update(context.TODO(), fooCopy, metav1.UpdateOptions{})
 	return err
 }
 

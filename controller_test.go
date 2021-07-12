@@ -33,9 +33,9 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 
-	samplecontroller "k8s.io/sample-controller/pkg/apis/samplecontroller/v1alpha1"
-	"k8s.io/sample-controller/pkg/generated/clientset/versioned/fake"
-	informers "k8s.io/sample-controller/pkg/generated/informers/externalversions"
+	samplecontroller "github.com/mattfanto/kafkaops-controller/pkg/apis/kafkaopscontroller/v1alpha1"
+	"github.com/mattfanto/kafkaops-controller/pkg/generated/clientset/versioned/fake"
+	informers "github.com/mattfanto/kafkaops-controller/pkg/generated/informers/externalversions"
 )
 
 var (
@@ -75,8 +75,8 @@ func newFoo(name string, replicas *int32) *samplecontroller.Foo {
 			Namespace: metav1.NamespaceDefault,
 		},
 		Spec: samplecontroller.FooSpec{
-			DeploymentName: fmt.Sprintf("%s-deployment", name),
-			Replicas:       replicas,
+			TopicName: fmt.Sprintf("%s-deployment", name),
+			Replicas:  replicas,
 		},
 	}
 }

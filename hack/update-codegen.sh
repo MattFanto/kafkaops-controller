@@ -26,12 +26,12 @@ CODEGEN_PKG=${CODEGEN_PKG:-$(cd "${SCRIPT_ROOT}"; ls -d -1 ./vendor/k8s.io/code-
 #                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
 bash "${CODEGEN_PKG}"/generate-groups.sh "deepcopy,client,informer,lister" \
-  k8s.io/sample-controller/pkg/generated k8s.io/sample-controller/pkg/apis \
-  samplecontroller:v1alpha1 \
+  github.com/mattfanto/kafkaops-controller/pkg/generated github.com/mattfanto/kafkaops-controller/pkg/apis \
+  kafkaopscontroller:v1alpha1 \
   --output-base "${SCRIPT_ROOT}/.." \
   --go-header-file "${SCRIPT_ROOT}"/hack/boilerplate.go.txt
 
-#mv ${SCRIPT_ROOT}/k8s.io/sample-controller/pkg/generated ${SCRIPT_ROOT}/pkg/
+#mv ${SCRIPT_ROOT}/github.com/mattfanto/kafkaops-controller/pkg/generated ${SCRIPT_ROOT}/pkg/
 #rm -rf ${SCRIPT_ROOT}/k8s.io
 
 # To use your own boilerplate text append:
