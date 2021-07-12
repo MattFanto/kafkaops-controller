@@ -3,6 +3,6 @@ kind: KafkaTopic
 metadata:
   name: example-kafkatopic
 spec:
-  topicName: exampe_topic_v1
+  topicName: example_topic_v2
   replicas: 1
   partitions: 1

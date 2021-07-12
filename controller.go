@@ -71,8 +71,8 @@ type Controller struct {
 
 	deploymentsLister appslisters.DeploymentLister
 	deploymentsSynced cache.InformerSynced
-	foosLister        listers.FooLister
-	foosSynced        cache.InformerSynced
+	kafkaTopicsLister listers.KafkaTopicLister
+	informerSynced    cache.InformerSynced
 
 	// workqueue is a rate limited work queue. This is used to queue work to be
 	// processed instead of performing it as soon as a change happens. This
@@ -90,7 +90,7 @@ func NewController(
 	kubeclientset kubernetes.Interface,
 	sampleclientset clientset.Interface,
 	deploymentInformer appsinformers.DeploymentInformer,
-	fooInformer informers.FooInformer) *Controller {
+	fooInformer informers.KafkaTopicInformer) *Controller {
 
 	// Create event broadcaster
 	// Add sample-controller types to the default Kubernetes Scheme so Events can be
@@ -107,8 +107,8 @@ func NewController(
 		sampleclientset:   sampleclientset,
 		deploymentsLister: deploymentInformer.Lister(),
 		deploymentsSynced: deploymentInformer.Informer().HasSynced,
-		foosLister:        fooInformer.Lister(),
-		foosSynced:        fooInformer.Informer().HasSynced,
+		kafkaTopicsLister: fooInformer.Lister(),
+		informerSynced:    fooInformer.Informer().HasSynced,
 		workqueue:         workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Foos"),
 		recorder:          recorder,
 	}
@@ -158,7 +158,7 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 
 	// Wait for the caches to be synced before starting workers
 	klog.Info("Waiting for informer caches to sync")
-	if ok := cache.WaitForCacheSync(stopCh, c.deploymentsSynced, c.foosSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh, c.deploymentsSynced, c.informerSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
@@ -250,7 +250,7 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// Get the KafkaTopic resource with this namespace/name
-	foo, err := c.foosLister.Foos(namespace).Get(name)
+	foo, err := c.kafkaTopicsLister.KafkaTopics(namespace).Get(name)
 	if err != nil {
 		// The KafkaTopic resource may no longer exist, in which case we stop
 		// processing.
@@ -330,17 +330,17 @@ func (c *Controller) syncHandler(key string) error {
 	return nil
 }
 
-func (c *Controller) updateFooStatus(foo *samplev1alpha1.KafkaTopic, topicStatus *samplev1alpha1.KafkaTopicStatus) error {
+func (c *Controller) updateFooStatus(kafkaTopic *samplev1alpha1.KafkaTopic, topicStatus *samplev1alpha1.KafkaTopicStatus) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
-	fooCopy := foo.DeepCopy()
+	fooCopy := kafkaTopic.DeepCopy()
 	fooCopy.Status = *topicStatus
 	// If the CustomResourceSubresources feature gate is not enabled,
 	// we must use Update instead of UpdateStatus to update the Status block of the KafkaTopic resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
 	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := c.sampleclientset.KafkaopscontrollerV1alpha1().Foos(foo.Namespace).Update(context.TODO(), fooCopy, metav1.UpdateOptions{})
+	_, err := c.sampleclientset.KafkaopscontrollerV1alpha1().KafkaTopics(kafkaTopic.Namespace).Update(context.TODO(), fooCopy, metav1.UpdateOptions{})
 	return err
 }
 
@@ -386,7 +386,7 @@ func (c *Controller) handleObject(obj interface{}) {
 			return
 		}
 
-		foo, err := c.foosLister.Foos(object.GetNamespace()).Get(ownerRef.Name)
+		foo, err := c.kafkaTopicsLister.KafkaTopics(object.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
 			klog.V(4).Infof("ignoring orphaned object '%s' of foo '%s'", object.GetSelfLink(), ownerRef.Name)
 			return
@@ -402,17 +402,17 @@ func (c *Controller) handleObject(obj interface{}) {
 // the KafkaTopic resource that 'owns' it.
 //
 // This will now create a new topic
-func newDeployment(foo *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
-	topic, err := kafkaops.CreateFooTopic(foo.Spec)
+func newDeployment(kafkaTopic *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
+	topic, err := kafkaops.CreateFooTopic(kafkaTopic.Spec)
 	if err != nil {
 		return nil, err
 	}
-	klog.Infof("Created topic named '%s'", foo.Spec.TopicName)
+	klog.Infof("Created topic named '%s'", kafkaTopic.Spec.TopicName)
 	return topic, nil
 }
 
-func checkDeployment(foo *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
-	topic, err := kafkaops.GetTopicStatus(&foo.Spec)
+func checkDeployment(kafkaTopic *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
+	topic, err := kafkaops.GetTopicStatus(&kafkaTopic.Spec)
 	if err != nil {
 		return nil, err
 	}
