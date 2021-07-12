@@ -34,7 +34,7 @@ type Foo struct {
 
 // FooSpec is the spec for a Foo resource
 type FooSpec struct {
-	TopicName  string `json:"deploymentName"`
+	TopicName  string `json:"topicName"`
 	Replicas   *int32 `json:"replicas"`
 	Partitions *int32 `json:"partitions"`
 }
@@ -50,7 +50,7 @@ const (
 )
 
 type TopicStatus struct {
-	StatusCode TopicStatusCode `json:"status_code"`
+	StatusCode TopicStatusCode `json:"statusCode"`
 	Replicas   int             `json:"replicas"`
 	Partitions int             `json:"partitions"`
 }

@@ -267,17 +267,20 @@ func (c *Controller) syncHandler(key string) error {
 		// We choose to absorb the error here as the worker would requeue the
 		// resource otherwise. Instead, the next time the resource is updated
 		// the resource will be queued again.
-		utilruntime.HandleError(fmt.Errorf("%s: deployment name must be specified", key))
+		utilruntime.HandleError(fmt.Errorf("%s: topicStatus name must be specified", key))
 		return nil
 	}
 
-	// Get the deployment with the name specified in Foo.spec
-	deployment, err := checkDeployment(foo)
-	// If the resource doesn't exist, we'll create it
-	if errors.IsNotFound(err) {
-		deployment, err = newDeployment(foo)
+	// Get the topicStatus with the name specified in Foo.spec
+	topicStatus, err := checkDeployment(foo)
+	if err != nil {
+		return err
 	}
-	klog.Info(deployment)
+	// If the resource doesn't exist, we'll create it
+	if topicStatus.StatusCode == samplev1alpha1.NOT_EXISTS {
+		topicStatus, err = newDeployment(foo)
+	}
+	klog.Info(topicStatus)
 
 	// If an error occurs during Get/Create, we'll requeue the item so we can
 	// attempt processing again later. This could have been caused by a
@@ -290,8 +293,8 @@ func (c *Controller) syncHandler(key string) error {
 	TODO do I need this?
 	// If the Deployment is not controlled by this Foo resource, we should log
 	// a warning to the event recorder and return error msg.
-	if !metav1.IsControlledBy(deployment, foo) {
-		msg := fmt.Sprintf(MessageResourceExists, deployment.Name)
+	if !metav1.IsControlledBy(topicStatus, foo) {
+		msg := fmt.Sprintf(MessageResourceExists, topicStatus.Name)
 		c.recorder.Event(foo, corev1.EventTypeWarning, ErrResourceExists, msg)
 		return fmt.Errorf(msg)
 	}
@@ -303,9 +306,9 @@ func (c *Controller) syncHandler(key string) error {
 	// If this number of the replicas on the Foo resource is specified, and the
 	// number does not equal the current desired replicas on the Deployment, we
 	// should update the Deployment resource.
-	if foo.Spec.Replicas != nil && *foo.Spec.Replicas != *deployment.Spec.Replicas {
-		klog.V(4).Infof("Foo %s replicas: %d, deployment replicas: %d", name, *foo.Spec.Replicas, *deployment.Spec.Replicas)
-		deployment, err = c.kubeclientset.AppsV1().Deployments(foo.Namespace).Update(context.TODO(), newDeployment(foo), metav1.UpdateOptions{})
+	if foo.Spec.Replicas != nil && *foo.Spec.Replicas != *topicStatus.Spec.Replicas {
+		klog.V(4).Infof("Foo %s replicas: %d, topicStatus replicas: %d", name, *foo.Spec.Replicas, *topicStatus.Spec.Replicas)
+		topicStatus, err = c.kubeclientset.AppsV1().Deployments(foo.Namespace).Update(context.TODO(), newDeployment(foo), metav1.UpdateOptions{})
 	}
 	*/
 
@@ -318,7 +321,7 @@ func (c *Controller) syncHandler(key string) error {
 
 	// Finally, we update the status block of the Foo resource to reflect the
 	// current state of the world
-	err = c.updateFooStatus(foo, deployment)
+	err = c.updateFooStatus(foo, topicStatus)
 	if err != nil {
 		return err
 	}
@@ -327,12 +330,12 @@ func (c *Controller) syncHandler(key string) error {
 	return nil
 }
 
-func (c *Controller) updateFooStatus(foo *samplev1alpha1.Foo, deployment *kafkaops.KafkaTopicStatus) error {
+func (c *Controller) updateFooStatus(foo *samplev1alpha1.Foo, topicStatus *samplev1alpha1.TopicStatus) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
 	fooCopy := foo.DeepCopy()
-	fooCopy.Status = deployment.TopicStatus
+	fooCopy.Status = *topicStatus
 	// If the CustomResourceSubresources feature gate is not enabled,
 	// we must use Update instead of UpdateStatus to update the Status block of the Foo resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
@@ -399,20 +402,20 @@ func (c *Controller) handleObject(obj interface{}) {
 // the Foo resource that 'owns' it.
 //
 // This will now create a new topic
-func newDeployment(foo *samplev1alpha1.Foo) (*kafkaops.KafkaTopicStatus, error) {
+func newDeployment(foo *samplev1alpha1.Foo) (*samplev1alpha1.TopicStatus, error) {
 	topic, err := kafkaops.CreateFooTopic(foo.Spec)
 	if err != nil {
 		return nil, err
 	}
-	klog.Infof("Created topic named '%s'", topic.TopicName)
+	klog.Infof("Created topic named '%s'", foo.Spec.TopicName)
 	return topic, nil
 }
 
-func checkDeployment(foo *samplev1alpha1.Foo) (*kafkaops.KafkaTopicStatus, error) {
+func checkDeployment(foo *samplev1alpha1.Foo) (*samplev1alpha1.TopicStatus, error) {
 	topic, err := kafkaops.GetTopicStatus(&foo.Spec)
 	if err != nil {
 		return nil, err
 	}
-	klog.Infof("Topic status '%s'", topic.TopicStatus)
+	klog.Infof("Topic status '%s'", topic.StatusCode)
 	return topic, nil
 }

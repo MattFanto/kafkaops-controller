@@ -20,16 +20,22 @@ spec:
             spec:
               type: object
               properties:
-                deploymentName:
+                topicName:
                   type: string
                 replicas:
                   type: integer
                   minimum: 1
-                  maximum: 10
+                partitions:
+                  type: integer
+                  minimum: 1
             status:
               type: object
               properties:
-                availableReplicas:
+                statusCode:
+                  type: string
+                replicas:
+                  type: integer
+                partitions:
                   type: integer
   names:
     kind: Foo

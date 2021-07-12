@@ -3,5 +3,6 @@ kind: Foo
 metadata:
   name: example-foo
 spec:
-  deploymentName: example-foo
+  topicName: exampe_topic_v1
   replicas: 1
+  partitions: 1
