@@ -24,7 +24,7 @@ func getClient() (*kafka.AdminClient, error) {
 	return a, nil
 }
 
-func CreateFooTopic(spec v1alpha1.FooSpec) (*v1alpha1.TopicStatus, error) {
+func CreateFooTopic(spec v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus, error) {
 	maxDur, err := time.ParseDuration("60s")
 	if err != nil {
 		panic("ParseDuration(60s)")
@@ -65,14 +65,14 @@ func CreateFooTopic(spec v1alpha1.FooSpec) (*v1alpha1.TopicStatus, error) {
 
 	}
 
-	return &v1alpha1.TopicStatus{
+	return &v1alpha1.KafkaTopicStatus{
 		StatusCode: v1alpha1.UNKNOWN,
 		Replicas:   0,
 		Partitions: 0,
 	}, nil
 }
 
-func GetTopicStatus(spec *v1alpha1.FooSpec) (*v1alpha1.TopicStatus, error) {
+func GetTopicStatus(spec *v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus, error) {
 
 	a, err := getClient()
 	if err != nil {
@@ -108,7 +108,7 @@ func GetTopicStatus(spec *v1alpha1.FooSpec) (*v1alpha1.TopicStatus, error) {
 		status = v1alpha1.NOT_EXISTS
 	}
 
-	return &v1alpha1.TopicStatus{
+	return &v1alpha1.KafkaTopicStatus{
 		StatusCode: status,
 		Replicas:   1,
 		Partitions: 1,

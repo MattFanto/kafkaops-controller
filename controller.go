@@ -48,21 +48,21 @@ import (
 const controllerAgentName = "sample-controller"
 
 const (
-	// SuccessSynced is used as part of the Event 'reason' when a Foo is synced
+	// SuccessSynced is used as part of the Event 'reason' when a KafkaTopic is synced
 	SuccessSynced = "Synced"
-	// ErrResourceExists is used as part of the Event 'reason' when a Foo fails
+	// ErrResourceExists is used as part of the Event 'reason' when a KafkaTopic fails
 	// to sync due to a Deployment of the same name already existing.
 	ErrResourceExists = "ErrResourceExists"
 
 	// MessageResourceExists is the message used for Events when a resource
 	// fails to sync due to a Deployment already existing
-	MessageResourceExists = "Resource %q already exists and is not managed by Foo"
-	// MessageResourceSynced is the message used for an Event fired when a Foo
+	MessageResourceExists = "Resource %q already exists and is not managed by KafkaTopic"
+	// MessageResourceSynced is the message used for an Event fired when a KafkaTopic
 	// is synced successfully
-	MessageResourceSynced = "Foo synced successfully"
+	MessageResourceSynced = "KafkaTopic synced successfully"
 )
 
-// Controller is the controller implementation for Foo resources
+// Controller is the controller implementation for KafkaTopic resources
 type Controller struct {
 	// kubeclientset is a standard kubernetes clientset
 	kubeclientset kubernetes.Interface
@@ -114,7 +114,7 @@ func NewController(
 	}
 
 	klog.Info("Setting up event handlers")
-	// Set up an event handler for when Foo resources change
+	// Set up an event handler for when KafkaTopic resources change
 	fooInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueFoo,
 		UpdateFunc: func(old, new interface{}) {
@@ -123,7 +123,7 @@ func NewController(
 	})
 	// Set up an event handler for when Deployment resources change. This
 	// handler will lookup the owner of the given Deployment, and if it is
-	// owned by a Foo resource then the handler will enqueue that Foo resource for
+	// owned by a KafkaTopic resource then the handler will enqueue that KafkaTopic resource for
 	// processing. This way, we don't need to implement custom logic for
 	// handling Deployment resources. More info on this pattern:
 	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
@@ -154,7 +154,7 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	defer c.workqueue.ShutDown()
 
 	// Start the informer factories to begin populating the informer caches
-	klog.Info("Starting Foo controller")
+	klog.Info("Starting KafkaTopic controller")
 
 	// Wait for the caches to be synced before starting workers
 	klog.Info("Waiting for informer caches to sync")
@@ -163,7 +163,7 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	}
 
 	klog.Info("Starting workers")
-	// Launch two workers to process Foo resources
+	// Launch two workers to process KafkaTopic resources
 	for i := 0; i < threadiness; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
@@ -217,7 +217,7 @@ func (c *Controller) processNextWorkItem() bool {
 			return nil
 		}
 		// Run the syncHandler, passing it the namespace/name string of the
-		// Foo resource to be synced.
+		// KafkaTopic resource to be synced.
 		if err := c.syncHandler(key); err != nil {
 			// Put the item back on the workqueue to handle any transient errors.
 			c.workqueue.AddRateLimited(key)
@@ -239,7 +239,7 @@ func (c *Controller) processNextWorkItem() bool {
 }
 
 // syncHandler compares the actual state with the desired, and attempts to
-// converge the two. It then updates the Status block of the Foo resource
+// converge the two. It then updates the Status block of the KafkaTopic resource
 // with the current status of the resource.
 func (c *Controller) syncHandler(key string) error {
 	// Convert the namespace/name string into a distinct namespace and name
@@ -249,10 +249,10 @@ func (c *Controller) syncHandler(key string) error {
 		return nil
 	}
 
-	// Get the Foo resource with this namespace/name
+	// Get the KafkaTopic resource with this namespace/name
 	foo, err := c.foosLister.Foos(namespace).Get(name)
 	if err != nil {
-		// The Foo resource may no longer exist, in which case we stop
+		// The KafkaTopic resource may no longer exist, in which case we stop
 		// processing.
 		if errors.IsNotFound(err) {
 			utilruntime.HandleError(fmt.Errorf("foo '%s' in work queue no longer exists", key))
@@ -271,7 +271,7 @@ func (c *Controller) syncHandler(key string) error {
 		return nil
 	}
 
-	// Get the topicStatus with the name specified in Foo.spec
+	// Get the topicStatus with the name specified in KafkaTopic.spec
 	topicStatus, err := checkDeployment(foo)
 	if err != nil {
 		return err
@@ -291,7 +291,7 @@ func (c *Controller) syncHandler(key string) error {
 
 	/**
 	TODO do I need this?
-	// If the Deployment is not controlled by this Foo resource, we should log
+	// If the Deployment is not controlled by this KafkaTopic resource, we should log
 	// a warning to the event recorder and return error msg.
 	if !metav1.IsControlledBy(topicStatus, foo) {
 		msg := fmt.Sprintf(MessageResourceExists, topicStatus.Name)
@@ -303,11 +303,11 @@ func (c *Controller) syncHandler(key string) error {
 	/**
 	TODO nice to have regarding topic config
 
-	// If this number of the replicas on the Foo resource is specified, and the
+	// If this number of the replicas on the KafkaTopic resource is specified, and the
 	// number does not equal the current desired replicas on the Deployment, we
 	// should update the Deployment resource.
 	if foo.Spec.Replicas != nil && *foo.Spec.Replicas != *topicStatus.Spec.Replicas {
-		klog.V(4).Infof("Foo %s replicas: %d, topicStatus replicas: %d", name, *foo.Spec.Replicas, *topicStatus.Spec.Replicas)
+		klog.V(4).Infof("KafkaTopic %s replicas: %d, topicStatus replicas: %d", name, *foo.Spec.Replicas, *topicStatus.Spec.Replicas)
 		topicStatus, err = c.kubeclientset.AppsV1().Deployments(foo.Namespace).Update(context.TODO(), newDeployment(foo), metav1.UpdateOptions{})
 	}
 	*/
@@ -319,7 +319,7 @@ func (c *Controller) syncHandler(key string) error {
 		return err
 	}
 
-	// Finally, we update the status block of the Foo resource to reflect the
+	// Finally, we update the status block of the KafkaTopic resource to reflect the
 	// current state of the world
 	err = c.updateFooStatus(foo, topicStatus)
 	if err != nil {
@@ -330,23 +330,23 @@ func (c *Controller) syncHandler(key string) error {
 	return nil
 }
 
-func (c *Controller) updateFooStatus(foo *samplev1alpha1.Foo, topicStatus *samplev1alpha1.TopicStatus) error {
+func (c *Controller) updateFooStatus(foo *samplev1alpha1.KafkaTopic, topicStatus *samplev1alpha1.KafkaTopicStatus) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
 	fooCopy := foo.DeepCopy()
 	fooCopy.Status = *topicStatus
 	// If the CustomResourceSubresources feature gate is not enabled,
-	// we must use Update instead of UpdateStatus to update the Status block of the Foo resource.
+	// we must use Update instead of UpdateStatus to update the Status block of the KafkaTopic resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
 	// which is ideal for ensuring nothing other than resource status has been updated.
 	_, err := c.sampleclientset.KafkaopscontrollerV1alpha1().Foos(foo.Namespace).Update(context.TODO(), fooCopy, metav1.UpdateOptions{})
 	return err
 }
 
-// enqueueFoo takes a Foo resource and converts it into a namespace/name
+// enqueueFoo takes a KafkaTopic resource and converts it into a namespace/name
 // string which is then put onto the work queue. This method should *not* be
-// passed resources of any type other than Foo.
+// passed resources of any type other than KafkaTopic.
 func (c *Controller) enqueueFoo(obj interface{}) {
 	var key string
 	var err error
@@ -358,9 +358,9 @@ func (c *Controller) enqueueFoo(obj interface{}) {
 }
 
 // handleObject will take any resource implementing metav1.Object and attempt
-// to find the Foo resource that 'owns' it. It does this by looking at the
+// to find the KafkaTopic resource that 'owns' it. It does this by looking at the
 // objects metadata.ownerReferences field for an appropriate OwnerReference.
-// It then enqueues that Foo resource to be processed. If the object does not
+// It then enqueues that KafkaTopic resource to be processed. If the object does not
 // have an appropriate OwnerReference, it will simply be skipped.
 func (c *Controller) handleObject(obj interface{}) {
 	var object metav1.Object
@@ -380,9 +380,9 @@ func (c *Controller) handleObject(obj interface{}) {
 	}
 	klog.V(4).Infof("Processing object: %s", object.GetName())
 	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
-		// If this object is not owned by a Foo, we should not do anything more
+		// If this object is not owned by a KafkaTopic, we should not do anything more
 		// with it.
-		if ownerRef.Kind != "Foo" {
+		if ownerRef.Kind != "KafkaTopic" {
 			return
 		}
 
@@ -397,12 +397,12 @@ func (c *Controller) handleObject(obj interface{}) {
 	}
 }
 
-// newDeployment creates a new Deployment for a Foo resource. It also sets
+// newDeployment creates a new Deployment for a KafkaTopic resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
-// the Foo resource that 'owns' it.
+// the KafkaTopic resource that 'owns' it.
 //
 // This will now create a new topic
-func newDeployment(foo *samplev1alpha1.Foo) (*samplev1alpha1.TopicStatus, error) {
+func newDeployment(foo *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
 	topic, err := kafkaops.CreateFooTopic(foo.Spec)
 	if err != nil {
 		return nil, err
@@ -411,7 +411,7 @@ func newDeployment(foo *samplev1alpha1.Foo) (*samplev1alpha1.TopicStatus, error)
 	return topic, nil
 }
 
-func checkDeployment(foo *samplev1alpha1.Foo) (*samplev1alpha1.TopicStatus, error) {
+func checkDeployment(foo *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
 	topic, err := kafkaops.GetTopicStatus(&foo.Spec)
 	if err != nil {
 		return nil, err

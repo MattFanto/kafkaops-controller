@@ -26,7 +26,7 @@ import (
 
 type KafkaopscontrollerV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	FoosGetter
+	KafkaTopicsGetter
 }
 
 // KafkaopscontrollerV1alpha1Client is used to interact with features provided by the kafkaopscontroller.k8s.io group.
@@ -34,8 +34,8 @@ type KafkaopscontrollerV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *KafkaopscontrollerV1alpha1Client) Foos(namespace string) FooInterface {
-	return newFoos(c, namespace)
+func (c *KafkaopscontrollerV1alpha1Client) KafkaTopics(namespace string) KafkaTopicInterface {
+	return newKafkaTopics(c, namespace)
 }
 
 // NewForConfig creates a new KafkaopscontrollerV1alpha1Client for the given config.

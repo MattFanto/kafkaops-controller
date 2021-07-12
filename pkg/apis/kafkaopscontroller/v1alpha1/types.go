@@ -23,17 +23,17 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Foo is a specification for a Foo resource
-type Foo struct {
+// KafkaTopic is a specification for a KafkaTopic resource
+type KafkaTopic struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   FooSpec     `json:"spec"`
-	Status TopicStatus `json:"status"`
+	Spec   KafkaTopicSpec   `json:"spec"`
+	Status KafkaTopicStatus `json:"status"`
 }
 
-// FooSpec is the spec for a Foo resource
-type FooSpec struct {
+// KafkaTopicSpec is the spec for a KafkaTopic resource
+type KafkaTopicSpec struct {
 	TopicName  string `json:"topicName"`
 	Replicas   *int32 `json:"replicas"`
 	Partitions *int32 `json:"partitions"`
@@ -49,7 +49,7 @@ const (
 	// DEVIATED TopicStatusCode = "DEVIATED"
 )
 
-type TopicStatus struct {
+type KafkaTopicStatus struct {
 	StatusCode TopicStatusCode `json:"statusCode"`
 	Replicas   int             `json:"replicas"`
 	Partitions int             `json:"partitions"`
@@ -57,10 +57,10 @@ type TopicStatus struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// FooList is a list of Foo resources
-type FooList struct {
+// KafkaTopicList is a list of KafkaTopic resources
+type KafkaTopicList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []Foo `json:"items"`
+	Items []KafkaTopic `json:"items"`
 }
