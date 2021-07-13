@@ -20,7 +20,7 @@ func TestCreateTopic(t *testing.T) {
 }
 
 func TestGetStatus(t *testing.T) {
-	topicStatus, err := kafkaops.GetTopicStatus(&v1alpha1.KafkaTopicSpec{
+	topicStatus, err := kafkaops.CheckKafkaTopicStatus(&v1alpha1.KafkaTopicSpec{
 		TopicName: "example_topic_not",
 		Replicas:  int32Ptr(1),
 	})

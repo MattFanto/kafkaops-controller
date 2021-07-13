@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/mattfanto/kafkaops-controller/pkg/resources/kafkaops"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -32,7 +33,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	appslisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -53,6 +53,9 @@ const (
 	// ErrResourceExists is used as part of the Event 'reason' when a KafkaTopic fails
 	// to sync due to a Deployment of the same name already existing.
 	ErrResourceExists = "ErrResourceExists"
+	// ErrResourceDeviated is used as part of the Event 'reason' when a KafkaTopic deviates
+	// from the original specification
+	ErrResourceDeviated = "ErrResourceDeviated"
 
 	// MessageResourceExists is the message used for Events when a resource
 	// fails to sync due to a Deployment already existing
@@ -60,6 +63,9 @@ const (
 	// MessageResourceSynced is the message used for an Event fired when a KafkaTopic
 	// is synced successfully
 	MessageResourceSynced = "KafkaTopic synced successfully"
+	// Deviation is used as part of the Event 'reason' when a KafkaTopic deviates from the
+	// original specification
+	MessageConfigurationDeviation = "KafkaTopic configuration deviated from the configuration"
 )
 
 // Controller is the controller implementation for KafkaTopic resources
@@ -69,8 +75,6 @@ type Controller struct {
 	// sampleclientset is a clientset for our own API group
 	sampleclientset clientset.Interface
 
-	deploymentsLister appslisters.DeploymentLister
-	deploymentsSynced cache.InformerSynced
 	kafkaTopicsLister listers.KafkaTopicLister
 	informerSynced    cache.InformerSynced
 
@@ -105,8 +109,6 @@ func NewController(
 	controller := &Controller{
 		kubeclientset:     kubeclientset,
 		sampleclientset:   sampleclientset,
-		deploymentsLister: deploymentInformer.Lister(),
-		deploymentsSynced: deploymentInformer.Informer().HasSynced,
 		kafkaTopicsLister: fooInformer.Lister(),
 		informerSynced:    fooInformer.Informer().HasSynced,
 		workqueue:         workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Foos"),
@@ -158,7 +160,7 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 
 	// Wait for the caches to be synced before starting workers
 	klog.Info("Waiting for informer caches to sync")
-	if ok := cache.WaitForCacheSync(stopCh, c.deploymentsSynced, c.informerSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh, c.informerSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
@@ -250,19 +252,19 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// Get the KafkaTopic resource with this namespace/name
-	foo, err := c.kafkaTopicsLister.KafkaTopics(namespace).Get(name)
+	kafkaTopic, err := c.kafkaTopicsLister.KafkaTopics(namespace).Get(name)
 	if err != nil {
 		// The KafkaTopic resource may no longer exist, in which case we stop
 		// processing.
 		if errors.IsNotFound(err) {
-			utilruntime.HandleError(fmt.Errorf("foo '%s' in work queue no longer exists", key))
+			utilruntime.HandleError(fmt.Errorf("kafkaTopic '%s' in work queue no longer exists", key))
 			return nil
 		}
 
 		return err
 	}
 
-	deploymentName := foo.Spec.TopicName
+	deploymentName := kafkaTopic.Spec.TopicName
 	if deploymentName == "" {
 		// We choose to absorb the error here as the worker would requeue the
 		// resource otherwise. Instead, the next time the resource is updated
@@ -272,13 +274,13 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// Get the topicStatus with the name specified in KafkaTopic.spec
-	topicStatus, err := checkDeployment(foo)
+	topicStatus, err := checkKafkaTopic(kafkaTopic)
 	if err != nil {
 		return err
 	}
 	// If the resource doesn't exist, we'll create it
 	if topicStatus.StatusCode == samplev1alpha1.NOT_EXISTS {
-		topicStatus, err = newDeployment(foo)
+		topicStatus, err = newKafkaTopic(kafkaTopic)
 	}
 	klog.Info(topicStatus)
 
@@ -293,9 +295,9 @@ func (c *Controller) syncHandler(key string) error {
 	TODO do I need this?
 	// If the Deployment is not controlled by this KafkaTopic resource, we should log
 	// a warning to the event recorder and return error msg.
-	if !metav1.IsControlledBy(topicStatus, foo) {
+	if !metav1.IsControlledBy(topicStatus, kafkaTopic) {
 		msg := fmt.Sprintf(MessageResourceExists, topicStatus.Name)
-		c.recorder.Event(foo, corev1.EventTypeWarning, ErrResourceExists, msg)
+		c.recorder.Event(kafkaTopic, corev1.EventTypeWarning, ErrResourceExists, msg)
 		return fmt.Errorf(msg)
 	}
 	*/
@@ -306,9 +308,9 @@ func (c *Controller) syncHandler(key string) error {
 	// If this number of the replicas on the KafkaTopic resource is specified, and the
 	// number does not equal the current desired replicas on the Deployment, we
 	// should update the Deployment resource.
-	if foo.Spec.Replicas != nil && *foo.Spec.Replicas != *topicStatus.Spec.Replicas {
-		klog.V(4).Infof("KafkaTopic %s replicas: %d, topicStatus replicas: %d", name, *foo.Spec.Replicas, *topicStatus.Spec.Replicas)
-		topicStatus, err = c.kubeclientset.AppsV1().Deployments(foo.Namespace).Update(context.TODO(), newDeployment(foo), metav1.UpdateOptions{})
+	if kafkaTopic.Spec.Replicas != nil && *kafkaTopic.Spec.Replicas != *topicStatus.Spec.Replicas {
+		klog.V(4).Infof("KafkaTopic %s replicas: %d, topicStatus replicas: %d", name, *kafkaTopic.Spec.Replicas, *topicStatus.Spec.Replicas)
+		topicStatus, err = c.kubeclientset.AppsV1().Deployments(kafkaTopic.Namespace).Update(context.TODO(), newKafkaTopic(kafkaTopic), metav1.UpdateOptions{})
 	}
 	*/
 
@@ -321,26 +323,30 @@ func (c *Controller) syncHandler(key string) error {
 
 	// Finally, we update the status block of the KafkaTopic resource to reflect the
 	// current state of the world
-	err = c.updateFooStatus(foo, topicStatus)
+	err = c.updateKafkaTopicStatus(kafkaTopic, topicStatus)
 	if err != nil {
 		return err
 	}
 
-	c.recorder.Event(foo, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
+	if topicStatus.StatusCode == samplev1alpha1.DEVIATED {
+		c.recorder.Event(kafkaTopic, corev1.EventTypeWarning, ErrResourceDeviated, MessageResourceSynced)
+	} else {
+		c.recorder.Event(kafkaTopic, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
+	}
 	return nil
 }
 
-func (c *Controller) updateFooStatus(kafkaTopic *samplev1alpha1.KafkaTopic, topicStatus *samplev1alpha1.KafkaTopicStatus) error {
+func (c *Controller) updateKafkaTopicStatus(kafkaTopic *samplev1alpha1.KafkaTopic, topicStatus *samplev1alpha1.KafkaTopicStatus) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
-	fooCopy := kafkaTopic.DeepCopy()
-	fooCopy.Status = *topicStatus
+	kafkaTopicCopy := kafkaTopic.DeepCopy()
+	kafkaTopicCopy.Status = *topicStatus
 	// If the CustomResourceSubresources feature gate is not enabled,
 	// we must use Update instead of UpdateStatus to update the Status block of the KafkaTopic resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
 	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := c.sampleclientset.KafkaopscontrollerV1alpha1().KafkaTopics(kafkaTopic.Namespace).Update(context.TODO(), fooCopy, metav1.UpdateOptions{})
+	_, err := c.sampleclientset.KafkaopscontrollerV1alpha1().KafkaTopics(kafkaTopic.Namespace).Update(context.TODO(), kafkaTopicCopy, metav1.UpdateOptions{})
 	return err
 }
 
@@ -397,12 +403,12 @@ func (c *Controller) handleObject(obj interface{}) {
 	}
 }
 
-// newDeployment creates a new Deployment for a KafkaTopic resource. It also sets
+// newKafkaTopic creates a new Deployment for a KafkaTopic resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the KafkaTopic resource that 'owns' it.
 //
 // This will now create a new topic
-func newDeployment(kafkaTopic *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
+func newKafkaTopic(kafkaTopic *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
 	topic, err := kafkaops.CreateFooTopic(kafkaTopic.Spec)
 	if err != nil {
 		return nil, err
@@ -411,11 +417,35 @@ func newDeployment(kafkaTopic *samplev1alpha1.KafkaTopic) (*samplev1alpha1.Kafka
 	return topic, nil
 }
 
-func checkDeployment(kafkaTopic *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
-	topic, err := kafkaops.GetTopicStatus(&kafkaTopic.Spec)
+func checkKafkaTopic(kafkaTopic *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
+	topicStatus, err := kafkaops.CheckKafkaTopicStatus(&kafkaTopic.Spec)
 	if err != nil {
 		return nil, err
 	}
-	klog.Infof("Topic status '%s'", topic.StatusCode)
-	return topic, nil
+	klog.Infof("Topic status '%s'", topicStatus.StatusCode)
+	if topicStatus.StatusCode == samplev1alpha1.EXISTS {
+		// Since the topic exists we can check possible deviation
+		if kafkaTopic.Spec.Replicas != nil && *kafkaTopic.Spec.Replicas != int32(topicStatus.Replicas) {
+			meta.SetStatusCondition(&topicStatus.Conditions, metav1.Condition{
+				Type:    "Ready",
+				Status:  metav1.ConditionFalse,
+				Message: "Replicas count mismatch between status and specification",
+			})
+			topicStatus.StatusCode = samplev1alpha1.DEVIATED
+		} else if kafkaTopic.Spec.Partitions != nil && *kafkaTopic.Spec.Partitions != int32(topicStatus.Partitions) {
+			meta.SetStatusCondition(&topicStatus.Conditions, metav1.Condition{
+				Type:    "Ready",
+				Status:  metav1.ConditionFalse,
+				Message: "Replicas count mismatch between status and specification",
+			})
+			topicStatus.StatusCode = samplev1alpha1.DEVIATED
+		} else {
+			meta.SetStatusCondition(&topicStatus.Conditions, metav1.Condition{
+				Type:    "Ready",
+				Status:  metav1.ConditionTrue,
+				Message: "Topic ready and specification in sync",
+			})
+		}
+	}
+	return topicStatus, nil
 }

@@ -45,14 +45,14 @@ const (
 	UNKNOWN    TopicStatusCode = "UNKNOWN"
 	EXISTS     TopicStatusCode = "EXISTS"
 	NOT_EXISTS TopicStatusCode = "NOT_EXISTS"
-	// TODO deviation status
-	// DEVIATED TopicStatusCode = "DEVIATED"
+	DEVIATED   TopicStatusCode = "DEVIATED"
 )
 
 type KafkaTopicStatus struct {
-	StatusCode TopicStatusCode `json:"statusCode"`
-	Replicas   int             `json:"replicas"`
-	Partitions int             `json:"partitions"`
+	StatusCode TopicStatusCode    `json:"statusCode"`
+	Replicas   int                `json:"replicas"`
+	Partitions int                `json:"partitions"`
+	Conditions []metav1.Condition `json:"conditions"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

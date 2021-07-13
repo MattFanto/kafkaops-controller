@@ -258,7 +258,7 @@ func TestCreatesDeployment(t *testing.T) {
 	f.fooLister = append(f.fooLister, foo)
 	f.objects = append(f.objects, foo)
 
-	expDeployment := newDeployment(foo)
+	expDeployment := newKafkaTopic(foo)
 	f.expectCreateDeploymentAction(expDeployment)
 	f.expectUpdateFooStatusAction(foo)
 
@@ -268,7 +268,7 @@ func TestCreatesDeployment(t *testing.T) {
 func TestDoNothing(t *testing.T) {
 	f := newFixture(t)
 	foo := newFoo("test", int32Ptr(1))
-	d := newDeployment(foo)
+	d := newKafkaTopic(foo)
 
 	f.fooLister = append(f.fooLister, foo)
 	f.objects = append(f.objects, foo)
@@ -282,11 +282,11 @@ func TestDoNothing(t *testing.T) {
 func TestUpdateDeployment(t *testing.T) {
 	f := newFixture(t)
 	foo := newFoo("test", int32Ptr(1))
-	d := newDeployment(foo)
+	d := newKafkaTopic(foo)
 
 	// Update replicas
 	foo.Spec.Replicas = int32Ptr(2)
-	expDeployment := newDeployment(foo)
+	expDeployment := newKafkaTopic(foo)
 
 	f.fooLister = append(f.fooLister, foo)
 	f.objects = append(f.objects, foo)
@@ -301,7 +301,7 @@ func TestUpdateDeployment(t *testing.T) {
 func TestNotControlledByUs(t *testing.T) {
 	f := newFixture(t)
 	foo := newFoo("test", int32Ptr(1))
-	d := newDeployment(foo)
+	d := newKafkaTopic(foo)
 
 	d.ObjectMeta.OwnerReferences = []metav1.OwnerReference{}
 

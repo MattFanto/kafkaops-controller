@@ -8,11 +8,6 @@ import (
 	"time"
 )
 
-type KafkaTopicStatus struct {
-	TopicName   string
-	TopicStatus v1alpha1.TopicStatusCode
-}
-
 func getClient() (*kafka.AdminClient, error) {
 	cf := kafka.ConfigMap{
 		"bootstrap.servers": "localhost:9092",
@@ -72,19 +67,22 @@ func CreateFooTopic(spec v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus, e
 	}, nil
 }
 
-func GetTopicStatus(spec *v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus, error) {
+func CheckKafkaTopicStatus(spec *v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus, error) {
 
 	a, err := getClient()
 	if err != nil {
 		return nil, err
 	}
 	// Contexts are used to abort or limit the amount of time
-	// the Admin call blocks waiting for a result.
+	// the Admin call blocks waiting for a config.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Results will be stored here
+	topicStatus := v1alpha1.KafkaTopicStatus{}
+
 	dur, _ := time.ParseDuration("20s")
-	results, err := a.DescribeConfigs(ctx,
+	configs, err := a.DescribeConfigs(ctx,
 		[]kafka.ConfigResource{{Type: kafka.ResourceTopic, Name: spec.TopicName}},
 		kafka.SetAdminRequestTimeout(dur))
 	if err != nil {
@@ -92,25 +90,33 @@ func GetTopicStatus(spec *v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus, 
 			kafka.ResourceTopic, spec.TopicName, err)
 		return nil, err
 	}
-	if len(results) != 1 {
-		panic("Expected one results after issuing create for one topic")
+	if len(configs) != 1 {
+		panic("Expected one configs after issuing create for one topic")
 	}
-	result := results[0]
+	config := configs[0]
 
-	a.Close()
 	/**
 	TODO remap errors
 	*/
-	status := v1alpha1.UNKNOWN
-	if result.Error.Code() == kafka.ErrNoError {
-		status = v1alpha1.EXISTS
-	} else if result.Error.Code() == kafka.ErrUnknownTopicOrPart {
-		status = v1alpha1.NOT_EXISTS
+	if config.Error.Code() == kafka.ErrNoError {
+		topicStatus.StatusCode = v1alpha1.EXISTS
+	} else if config.Error.Code() == kafka.ErrUnknownTopicOrPart {
+		topicStatus.StatusCode = v1alpha1.NOT_EXISTS
+	} else {
+		topicStatus.StatusCode = v1alpha1.UNKNOWN
 	}
 
-	return &v1alpha1.KafkaTopicStatus{
-		StatusCode: status,
-		Replicas:   1,
-		Partitions: 1,
-	}, nil
+	metadata, err := a.GetMetadata(&spec.TopicName, false, int(dur.Milliseconds()))
+	if err != nil {
+		return nil, err
+	}
+	partitions := metadata.Topics[spec.TopicName].Partitions
+	if len(partitions) > 0 {
+		topicStatus.Partitions = len(partitions)
+		topicStatus.Replicas = len(partitions[0].Replicas)
+	}
+
+	a.Close()
+
+	return &topicStatus, nil
 }
