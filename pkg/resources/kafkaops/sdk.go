@@ -9,6 +9,7 @@ import (
 )
 
 func getClient() (*kafka.AdminClient, error) {
+	// TODO Bootstrap server dynamic config
 	cf := kafka.ConfigMap{
 		"bootstrap.servers": "localhost:9092",
 	}
@@ -19,6 +20,7 @@ func getClient() (*kafka.AdminClient, error) {
 	return a, nil
 }
 
+// CreateKafkaTopic creates a topic in Kafka according to the specification defined in KafkaTopicSpec
 func CreateKafkaTopic(spec v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus, error) {
 	maxDur, err := time.ParseDuration("60s")
 	if err != nil {
@@ -67,6 +69,11 @@ func CreateKafkaTopic(spec v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus,
 	}, nil
 }
 
+// CheckKafkaTopicStatus performs several checks on a Kafka topic according to the specification
+// defined in KafkaTopicSpec.
+// In particular the following checks are performed:
+// * topic existence
+// * topic configuration matches
 func CheckKafkaTopicStatus(spec *v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus, error) {
 
 	a, err := getClient()
