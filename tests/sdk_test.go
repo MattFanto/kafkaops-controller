@@ -27,5 +27,5 @@ func TestGetStatus(t *testing.T) {
 	if err != nil {
 		return
 	}
-	assert.Equal(t, "NOT_EXISTS", topicStatus.TopicStatus, "Expected topic to not exists")
+	assert.Equal(t, "NOT_EXISTS", topicStatus.StatusCode, "Expected topic to not exists")
 }
