@@ -63,9 +63,9 @@ const (
 	// MessageResourceSynced is the message used for an Event fired when a KafkaTopic
 	// is synced successfully
 	MessageResourceSynced = "KafkaTopic synced successfully"
-	// Deviation is used as part of the Event 'reason' when a KafkaTopic deviates from the
+	// MessageResourceDeviated is used as part of the Event 'reason' when a KafkaTopic deviates from the
 	// original specification
-	MessageConfigurationDeviation = "KafkaTopic configuration deviated from the configuration"
+	MessageResourceDeviated = "KafkaTopic configuration deviated from the configuration"
 )
 
 // Controller is the controller implementation for KafkaTopic resources
@@ -329,7 +329,7 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	if topicStatus.StatusCode == samplev1alpha1.DEVIATED {
-		c.recorder.Event(kafkaTopic, corev1.EventTypeWarning, ErrResourceDeviated, MessageResourceSynced)
+		c.recorder.Event(kafkaTopic, corev1.EventTypeWarning, ErrResourceDeviated, MessageResourceDeviated)
 	} else {
 		c.recorder.Event(kafkaTopic, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	}
