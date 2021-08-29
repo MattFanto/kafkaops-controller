@@ -19,7 +19,7 @@ func getClient() (*kafka.AdminClient, error) {
 	return a, nil
 }
 
-func CreateFooTopic(spec v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus, error) {
+func CreateKafkaTopic(spec v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus, error) {
 	maxDur, err := time.ParseDuration("60s")
 	if err != nil {
 		panic("ParseDuration(60s)")

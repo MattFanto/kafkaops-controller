@@ -1,19 +1,3 @@
-/*
-Copyright 2017 The Kubernetes Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package main
 
 import (
@@ -286,8 +270,8 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	/**
-	TODO do I need this?
-	// If the Deployment is not controlled by this KafkaTopic resource, we should log
+	TODO nice to have but need some topic metadata
+	// If the topic is not controlled by this KafkaTopic resource, we should log
 	// a warning to the event recorder and return error msg.
 	if !metav1.IsControlledBy(topicStatus, kafkaTopic) {
 		msg := fmt.Sprintf(MessageResourceExists, topicStatus.Name)
@@ -301,7 +285,7 @@ func (c *Controller) syncHandler(key string) error {
 
 	// If this number of the replicas on the KafkaTopic resource is specified, and the
 	// number does not equal the current desired replicas on the Deployment, we
-	// should update the Deployment resource.
+	// should update the topic is specified in settings.
 	if kafkaTopic.Spec.Replicas != nil && *kafkaTopic.Spec.Replicas != *topicStatus.Spec.Replicas {
 		klog.V(4).Infof("KafkaTopic %s replicas: %d, topicStatus replicas: %d", name, *kafkaTopic.Spec.Replicas, *topicStatus.Spec.Replicas)
 		topicStatus, err = c.kubeclientset.AppsV1().Deployments(kafkaTopic.Namespace).Update(context.TODO(), newKafkaTopic(kafkaTopic), metav1.UpdateOptions{})
@@ -397,13 +381,13 @@ func (c *Controller) handleObject(obj interface{}) {
 	}
 }
 
-// newKafkaTopic creates a new Deployment for a KafkaTopic resource. It also sets
+// newKafkaTopic creates a new topic in kafka for a KafkaTopic resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the KafkaTopic resource that 'owns' it.
 //
 // This will now create a new topic
 func newKafkaTopic(kafkaTopic *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
-	topic, err := kafkaops.CreateFooTopic(kafkaTopic.Spec)
+	topic, err := kafkaops.CreateKafkaTopic(kafkaTopic.Spec)
 	if err != nil {
 		return nil, err
 	}
@@ -411,6 +395,8 @@ func newKafkaTopic(kafkaTopic *samplev1alpha1.KafkaTopic) (*samplev1alpha1.Kafka
 	return topic, nil
 }
 
+// checkKafkaTopic compare the topic configuration against specification in KafkaTopic resource.
+// KafkaTopic resource status will be updated accordingly.
 func checkKafkaTopic(kafkaTopic *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
 	topicStatus, err := kafkaops.CheckKafkaTopicStatus(&kafkaTopic.Spec)
 	if err != nil {

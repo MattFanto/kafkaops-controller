@@ -10,7 +10,7 @@ import (
 func int32Ptr(i int32) *int32 { return &i }
 
 func TestCreateTopic(t *testing.T) {
-	_, err := kafkaops.CreateFooTopic(v1alpha1.KafkaTopicSpec{
+	_, err := kafkaops.CreateKafkaTopic(v1alpha1.KafkaTopicSpec{
 		TopicName: "example_topic_v1",
 		Replicas:  int32Ptr(1),
 	})
