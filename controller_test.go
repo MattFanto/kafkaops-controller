@@ -1,7 +1,29 @@
 package main
 
+//import (
+//	"fmt"
+//	informers "github.com/mattfanto/kafkaops-controller/pkg/generated/informers/externalversions"
+//	"k8s.io/apimachinery/pkg/runtime/schema"
+//	"k8s.io/apimachinery/pkg/util/diff"
+//	kubeinformers "k8s.io/client-go/informers"
+//	"k8s.io/client-go/tools/cache"
+//	"k8s.io/client-go/tools/record"
+//
+//	"reflect"
+//	"testing"
+//	"time"
+//
+//	kafkaopscontroller "github.com/mattfanto/kafkaops-controller/pkg/apis/kafkaopscontroller/v1alpha1"
+//	"github.com/mattfanto/kafkaops-controller/pkg/generated/clientset/versioned/fake"
+//	apps "k8s.io/api/apps/v1"
+//	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+//	"k8s.io/apimachinery/pkg/runtime"
+//	k8sfake "k8s.io/client-go/kubernetes/fake"
+//	core "k8s.io/client-go/testing"
+//)
 import (
 	"fmt"
+	"github.com/mattfanto/kafkaops-controller/pkg/resources/kafkaops"
 	"reflect"
 	"testing"
 	"time"
@@ -33,14 +55,14 @@ type fixture struct {
 	client     *fake.Clientset
 	kubeclient *k8sfake.Clientset
 	// Objects to put in the store.
-	fooLister        []*kafkaopscontroller.KafkaTopic
-	deploymentLister []*apps.Deployment
+	kafkaTopicsLister []*kafkaopscontroller.KafkaTopic
 	// Actions expected to happen on the client.
 	kubeactions []core.Action
 	actions     []core.Action
 	// Objects from here preloaded into NewSimpleFake.
 	kubeobjects []runtime.Object
 	objects     []runtime.Object
+	kafkaSdk    kafkaops.Interface
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -48,6 +70,7 @@ func newFixture(t *testing.T) *fixture {
 	f.t = t
 	f.objects = []runtime.Object{}
 	f.kubeobjects = []runtime.Object{}
+	f.kafkaSdk = fakeKafkaSdk{}
 	return f
 }
 
@@ -66,25 +89,25 @@ func newFoo(name string, replicas *int32) *kafkaopscontroller.KafkaTopic {
 }
 
 func (f *fixture) newController() (*Controller, informers.SharedInformerFactory, kubeinformers.SharedInformerFactory) {
+
 	f.client = fake.NewSimpleClientset(f.objects...)
 	f.kubeclient = k8sfake.NewSimpleClientset(f.kubeobjects...)
 
 	i := informers.NewSharedInformerFactory(f.client, noResyncPeriodFunc())
 	k8sI := kubeinformers.NewSharedInformerFactory(f.kubeclient, noResyncPeriodFunc())
 
-	c := NewController(f.kubeclient, f.client,
-		k8sI.Apps().V1().Deployments(), i.Samplecontroller().V1alpha1().Foos())
+	c := NewController(
+		f.kubeclient,
+		f.client,
+		k8sI.Apps().V1().Deployments(),
+		i.Kafkaopscontroller().V1alpha1().KafkaTopics(),
+		f.kafkaSdk)
 
 	c.informerSynced = alwaysReady
-	c.deploymentsSynced = alwaysReady
 	c.recorder = &record.FakeRecorder{}
 
-	for _, f := range f.fooLister {
-		i.Samplecontroller().V1alpha1().Foos().Informer().GetIndexer().Add(f)
-	}
-
-	for _, d := range f.deploymentLister {
-		k8sI.Apps().V1().Deployments().Informer().GetIndexer().Add(d)
+	for _, f := range f.kafkaTopicsLister {
+		i.Kafkaopscontroller().V1alpha1().KafkaTopics().Informer().GetIndexer().Add(f)
 	}
 
 	return c, i, k8sI
@@ -219,8 +242,8 @@ func (f *fixture) expectUpdateDeploymentAction(d *apps.Deployment) {
 	f.kubeactions = append(f.kubeactions, core.NewUpdateAction(schema.GroupVersionResource{Resource: "deployments"}, d.Namespace, d))
 }
 
-func (f *fixture) expectUpdateFooStatusAction(foo *kafkaopscontroller.KafkaTopic) {
-	action := core.NewUpdateAction(schema.GroupVersionResource{Resource: "foos"}, foo.Namespace, foo)
+func (f *fixture) expectUpdateKafkaTopicAction(foo *kafkaopscontroller.KafkaTopic) {
+	action := core.NewUpdateAction(schema.GroupVersionResource{Resource: "kafkatopics"}, foo.Namespace, foo)
 	// TODO: Until #38113 is merged, we can't use Subresource
 	//action.Subresource = "status"
 	f.actions = append(f.actions, action)
@@ -235,16 +258,39 @@ func getKey(foo *kafkaopscontroller.KafkaTopic, t *testing.T) string {
 	return key
 }
 
+type fakeKafkaSdk struct {
+	topics []string
+}
+
+func (_ fakeKafkaSdk) CreateKafkaTopic(spec kafkaopscontroller.KafkaTopicSpec) (*kafkaopscontroller.KafkaTopicStatus, error) {
+	return &kafkaopscontroller.KafkaTopicStatus{
+		StatusCode: "",
+		Replicas:   0,
+		Partitions: 0,
+		Conditions: nil,
+	}, nil
+}
+
+func (_ fakeKafkaSdk) CheckKafkaTopicStatus(spec *kafkaopscontroller.KafkaTopicSpec) (*kafkaopscontroller.KafkaTopicStatus, error) {
+	return &kafkaopscontroller.KafkaTopicStatus{
+		StatusCode: "",
+		Replicas:   0,
+		Partitions: 0,
+		Conditions: nil,
+	}, nil
+}
+
+var _ kafkaops.Interface = fakeKafkaSdk{}
+
 func TestCreatesDeployment(t *testing.T) {
 	f := newFixture(t)
 	foo := newFoo("test", int32Ptr(1))
 
-	f.fooLister = append(f.fooLister, foo)
+	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)
 	f.objects = append(f.objects, foo)
 
-	expDeployment := newKafkaTopic(foo)
-	f.expectCreateDeploymentAction(expDeployment)
-	f.expectUpdateFooStatusAction(foo)
+	//f.expectCreateDeploymentAction(expDeployment)
+	f.expectUpdateKafkaTopicAction(foo)
 
 	f.run(getKey(foo, t))
 }
@@ -252,49 +298,49 @@ func TestCreatesDeployment(t *testing.T) {
 func TestDoNothing(t *testing.T) {
 	f := newFixture(t)
 	foo := newFoo("test", int32Ptr(1))
-	d := newKafkaTopic(foo)
+	//d := newKafkaTopic(foo)
 
-	f.fooLister = append(f.fooLister, foo)
+	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)
 	f.objects = append(f.objects, foo)
-	f.deploymentLister = append(f.deploymentLister, d)
-	f.kubeobjects = append(f.kubeobjects, d)
+	//f.deploymentLister = append(f.kafkaTopicsLister, foo)
+	//f.kubeobjects = append(f.kubeobjects, foo)
 
-	f.expectUpdateFooStatusAction(foo)
+	f.expectUpdateKafkaTopicAction(foo)
 	f.run(getKey(foo, t))
 }
 
-func TestUpdateDeployment(t *testing.T) {
-	f := newFixture(t)
-	foo := newFoo("test", int32Ptr(1))
-	d := newKafkaTopic(foo)
-
-	// Update replicas
-	foo.Spec.Replicas = int32Ptr(2)
-	expDeployment := newKafkaTopic(foo)
-
-	f.fooLister = append(f.fooLister, foo)
-	f.objects = append(f.objects, foo)
-	f.deploymentLister = append(f.deploymentLister, d)
-	f.kubeobjects = append(f.kubeobjects, d)
-
-	f.expectUpdateFooStatusAction(foo)
-	f.expectUpdateDeploymentAction(expDeployment)
-	f.run(getKey(foo, t))
-}
-
-func TestNotControlledByUs(t *testing.T) {
-	f := newFixture(t)
-	foo := newFoo("test", int32Ptr(1))
-	d := newKafkaTopic(foo)
-
-	d.ObjectMeta.OwnerReferences = []metav1.OwnerReference{}
-
-	f.fooLister = append(f.fooLister, foo)
-	f.objects = append(f.objects, foo)
-	f.deploymentLister = append(f.deploymentLister, d)
-	f.kubeobjects = append(f.kubeobjects, d)
-
-	f.runExpectError(getKey(foo, t))
-}
+//func TestUpdateDeployment(t *testing.T) {
+//	f := newFixture(t)
+//	foo := newFoo("test", int32Ptr(1))
+//	d := newKafkaTopic(foo)
+//
+//	// Update replicas
+//	foo.Spec.Replicas = int32Ptr(2)
+//	expDeployment := newKafkaTopic(foo)
+//
+//	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)
+//	f.objects = append(f.objects, foo)
+//	f.deploymentLister = append(f.deploymentLister, d)
+//	f.kubeobjects = append(f.kubeobjects, d)
+//
+//	f.expectUpdateKafkaTopicAction(foo)
+//	f.expectUpdateDeploymentAction(expDeployment)
+//	f.run(getKey(foo, t))
+//}
+//
+//func TestNotControlledByUs(t *testing.T) {
+//	f := newFixture(t)
+//	foo := newFoo("test", int32Ptr(1))
+//	d := newKafkaTopic(foo)
+//
+//	d.ObjectMeta.OwnerReferences = []metav1.OwnerReference{}
+//
+//	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)
+//	f.objects = append(f.objects, foo)
+//	f.deploymentLister = append(f.deploymentLister, d)
+//	f.kubeobjects = append(f.kubeobjects, d)
+//
+//	f.runExpectError(getKey(foo, t))
+//}
 
 func int32Ptr(i int32) *int32 { return &i }

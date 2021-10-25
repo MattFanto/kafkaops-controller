@@ -8,6 +8,29 @@ import (
 	"time"
 )
 
+type Interface interface {
+	CreateKafkaTopic(spec v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus, error)
+	CheckKafkaTopicStatus(spec *v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus, error)
+}
+
+type KafkaSdk struct {
+	adminClient *kafka.AdminClient
+}
+
+func NewKafkaSdk(bootstrapServer string) (Interface, error) {
+	cf := kafka.ConfigMap{
+		"bootstrap.servers": bootstrapServer,
+	}
+	a, err := kafka.NewAdminClient(&cf)
+	if err != nil {
+		return nil, err
+	}
+	kafkaSdk := &KafkaSdk{
+		adminClient: a,
+	}
+	return kafkaSdk, nil
+}
+
 func getClient() (*kafka.AdminClient, error) {
 	// TODO Bootstrap server dynamic config
 	cf := kafka.ConfigMap{
@@ -21,7 +44,7 @@ func getClient() (*kafka.AdminClient, error) {
 }
 
 // CreateKafkaTopic creates a topic in Kafka according to the specification defined in KafkaTopicSpec
-func CreateKafkaTopic(spec v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus, error) {
+func (kafkaSdr KafkaSdk) CreateKafkaTopic(spec v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus, error) {
 	maxDur, err := time.ParseDuration("60s")
 	if err != nil {
 		panic("ParseDuration(60s)")
@@ -74,7 +97,7 @@ func CreateKafkaTopic(spec v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus,
 // In particular the following checks are performed:
 // * topic existence
 // * topic configuration matches
-func CheckKafkaTopicStatus(spec *v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus, error) {
+func (KafkaSdk KafkaSdk) CheckKafkaTopicStatus(spec *v1alpha1.KafkaTopicSpec) (*v1alpha1.KafkaTopicStatus, error) {
 
 	a, err := getClient()
 	if err != nil {

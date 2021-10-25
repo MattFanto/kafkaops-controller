@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"github.com/mattfanto/kafkaops-controller/pkg/resources/kafkaops"
 	"time"
 
 	kubeinformers "k8s.io/client-go/informers"
@@ -62,9 +63,17 @@ func main() {
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	exampleInformerFactory := informers.NewSharedInformerFactory(exampleClient, time.Second*30)
 
-	controller := NewController(kubeClient, exampleClient,
+	kafkaSdk, err := kafkaops.NewKafkaSdk("localhost:9092")
+	if err != nil {
+		panic(err)
+	}
+	controller := NewController(
+		kubeClient,
+		exampleClient,
 		kubeInformerFactory.Apps().V1().Deployments(),
-		exampleInformerFactory.Kafkaopscontroller().V1alpha1().KafkaTopics())
+		exampleInformerFactory.Kafkaopscontroller().V1alpha1().KafkaTopics(),
+		kafkaSdk,
+	)
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)
 	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.

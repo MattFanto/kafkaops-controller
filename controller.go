@@ -65,6 +65,8 @@ type Controller struct {
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
 	recorder record.EventRecorder
+	//
+	kafkaSdk kafkaops.Interface
 }
 
 // NewController returns a new sample controller
@@ -72,7 +74,9 @@ func NewController(
 	kubeclientset kubernetes.Interface,
 	sampleclientset clientset.Interface,
 	deploymentInformer appsinformers.DeploymentInformer,
-	fooInformer informers.KafkaTopicInformer) *Controller {
+	fooInformer informers.KafkaTopicInformer,
+	kafkaSdk kafkaops.Interface,
+) *Controller {
 
 	// Create event broadcaster
 	// Add sample-controller types to the default Kubernetes Scheme so Events can be
@@ -91,6 +95,7 @@ func NewController(
 		informerSynced:    fooInformer.Informer().HasSynced,
 		workqueue:         workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Foos"),
 		recorder:          recorder,
+		kafkaSdk:          kafkaSdk,
 	}
 
 	klog.Info("Setting up event handlers")
@@ -252,13 +257,13 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// Get the topicStatus with the name specified in KafkaTopic.spec
-	topicStatus, err := checkKafkaTopic(kafkaTopic)
+	topicStatus, err := checkKafkaTopic(c, kafkaTopic)
 	if err != nil {
 		return err
 	}
 	// If the resource doesn't exist, we'll create it
 	if topicStatus.StatusCode == samplev1alpha1.NOT_EXISTS {
-		topicStatus, err = newKafkaTopic(kafkaTopic)
+		topicStatus, err = newKafkaTopic(c, kafkaTopic)
 	}
 	klog.Info(topicStatus)
 
@@ -386,8 +391,8 @@ func (c *Controller) handleObject(obj interface{}) {
 // the KafkaTopic resource that 'owns' it.
 //
 // This will now create a new topic
-func newKafkaTopic(kafkaTopic *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
-	topic, err := kafkaops.CreateKafkaTopic(kafkaTopic.Spec)
+func newKafkaTopic(c *Controller, kafkaTopic *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
+	topic, err := c.kafkaSdk.CreateKafkaTopic(kafkaTopic.Spec)
 	if err != nil {
 		return nil, err
 	}
@@ -397,8 +402,8 @@ func newKafkaTopic(kafkaTopic *samplev1alpha1.KafkaTopic) (*samplev1alpha1.Kafka
 
 // checkKafkaTopic compare the topic configuration against specification in KafkaTopic resource.
 // KafkaTopic resource status will be updated accordingly.
-func checkKafkaTopic(kafkaTopic *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
-	topicStatus, err := kafkaops.CheckKafkaTopicStatus(&kafkaTopic.Spec)
+func checkKafkaTopic(c *Controller, kafkaTopic *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
+	topicStatus, err := c.kafkaSdk.CheckKafkaTopicStatus(&kafkaTopic.Spec)
 	if err != nil {
 		return nil, err
 	}
