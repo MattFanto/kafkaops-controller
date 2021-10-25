@@ -36,9 +36,9 @@ type FakeKafkaTopics struct {
 	ns   string
 }
 
-var kafkatopicsResource = schema.GroupVersionResource{Group: "kafkaopscontroller.k8s.io", Version: "v1alpha1", Resource: "kafkatopics"}
+var kafkatopicsResource = schema.GroupVersionResource{Group: "kafkaopscontroller.mattfanto.github.com", Version: "v1alpha1", Resource: "kafkatopics"}
 
-var kafkatopicsKind = schema.GroupVersionKind{Group: "kafkaopscontroller.k8s.io", Version: "v1alpha1", Kind: "KafkaTopic"}
+var kafkatopicsKind = schema.GroupVersionKind{Group: "kafkaopscontroller.mattfanto.github.com", Version: "v1alpha1", Kind: "KafkaTopic"}
 
 // Get takes name of the kafkaTopic, and returns the corresponding kafkaTopic object, and an error if there is any.
 func (c *FakeKafkaTopics) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.KafkaTopic, err error) {

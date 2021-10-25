@@ -52,7 +52,7 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=kafkaopscontroller.k8s.io, Version=v1alpha1
+	// Group=kafkaopscontroller.mattfanto.github.com, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("kafkatopics"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Kafkaopscontroller().V1alpha1().KafkaTopics().Informer()}, nil
 

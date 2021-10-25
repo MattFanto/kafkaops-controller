@@ -29,7 +29,7 @@ type KafkaopscontrollerV1alpha1Interface interface {
 	KafkaTopicsGetter
 }
 
-// KafkaopscontrollerV1alpha1Client is used to interact with features provided by the kafkaopscontroller.k8s.io group.
+// KafkaopscontrollerV1alpha1Client is used to interact with features provided by the kafkaopscontroller.mattfanto.github.com group.
 type KafkaopscontrollerV1alpha1Client struct {
 	restClient rest.Interface
 }
