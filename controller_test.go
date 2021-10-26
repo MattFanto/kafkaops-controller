@@ -22,7 +22,6 @@ package main
 //	core "k8s.io/client-go/testing"
 //)
 import (
-	"fmt"
 	"github.com/mattfanto/kafkaops-controller/pkg/resources/kafkaops"
 	"reflect"
 	"testing"
@@ -74,16 +73,24 @@ func newFixture(t *testing.T) *fixture {
 	return f
 }
 
-func newFoo(name string, replicas *int32) *kafkaopscontroller.KafkaTopic {
+func newFoo(name string, replicas *int32, partitions *int32) *kafkaopscontroller.KafkaTopic {
 	return &kafkaopscontroller.KafkaTopic{
-		TypeMeta: metav1.TypeMeta{APIVersion: kafkaopscontroller.SchemeGroupVersion.String()},
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: kafkaopscontroller.SchemeGroupVersion.String()},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: metav1.NamespaceDefault,
 		},
 		Spec: kafkaopscontroller.KafkaTopicSpec{
-			TopicName: fmt.Sprintf("%s-deployment", name),
-			Replicas:  replicas,
+			TopicName:  name,
+			Replicas:   replicas,
+			Partitions: partitions,
+		},
+		Status: kafkaopscontroller.KafkaTopicStatus{
+			StatusCode: kafkaopscontroller.EXISTS,
+			Replicas:   int(*replicas),
+			Partitions: int(*partitions),
+			Conditions: []metav1.Condition{},
 		},
 	}
 }
@@ -99,7 +106,6 @@ func (f *fixture) newController() (*Controller, informers.SharedInformerFactory,
 	c := NewController(
 		f.kubeclient,
 		f.client,
-		k8sI.Apps().V1().Deployments(),
 		i.Kafkaopscontroller().V1alpha1().KafkaTopics(),
 		f.kafkaSdk)
 
@@ -107,7 +113,10 @@ func (f *fixture) newController() (*Controller, informers.SharedInformerFactory,
 	c.recorder = &record.FakeRecorder{}
 
 	for _, f := range f.kafkaTopicsLister {
-		i.Kafkaopscontroller().V1alpha1().KafkaTopics().Informer().GetIndexer().Add(f)
+		err := i.Kafkaopscontroller().V1alpha1().KafkaTopics().Informer().GetIndexer().Add(f)
+		if err != nil {
+			return nil, nil, nil
+		}
 	}
 
 	return c, i, k8sI
@@ -222,10 +231,8 @@ func filterInformerActions(actions []core.Action) []core.Action {
 	ret := []core.Action{}
 	for _, action := range actions {
 		if len(action.GetNamespace()) == 0 &&
-			(action.Matches("list", "foos") ||
-				action.Matches("watch", "foos") ||
-				action.Matches("list", "deployments") ||
-				action.Matches("watch", "deployments")) {
+			(action.Matches("list", "kafkatopics") ||
+				action.Matches("watch", "kafkatopics")) {
 			continue
 		}
 		ret = append(ret, action)
@@ -264,18 +271,18 @@ type fakeKafkaSdk struct {
 
 func (_ fakeKafkaSdk) CreateKafkaTopic(spec kafkaopscontroller.KafkaTopicSpec) (*kafkaopscontroller.KafkaTopicStatus, error) {
 	return &kafkaopscontroller.KafkaTopicStatus{
-		StatusCode: "",
-		Replicas:   0,
-		Partitions: 0,
+		StatusCode: kafkaopscontroller.EXISTS,
+		Replicas:   1,
+		Partitions: 3,
 		Conditions: nil,
 	}, nil
 }
 
 func (_ fakeKafkaSdk) CheckKafkaTopicStatus(spec *kafkaopscontroller.KafkaTopicSpec) (*kafkaopscontroller.KafkaTopicStatus, error) {
 	return &kafkaopscontroller.KafkaTopicStatus{
-		StatusCode: "",
-		Replicas:   0,
-		Partitions: 0,
+		StatusCode: kafkaopscontroller.EXISTS,
+		Replicas:   1,
+		Partitions: 3,
 		Conditions: nil,
 	}, nil
 }
@@ -284,7 +291,7 @@ var _ kafkaops.Interface = fakeKafkaSdk{}
 
 func TestCreatesDeployment(t *testing.T) {
 	f := newFixture(t)
-	foo := newFoo("test", int32Ptr(1))
+	foo := newFoo("test", int32Ptr(1), int32Ptr(3))
 
 	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)
 	f.objects = append(f.objects, foo)
@@ -297,7 +304,7 @@ func TestCreatesDeployment(t *testing.T) {
 
 func TestDoNothing(t *testing.T) {
 	f := newFixture(t)
-	foo := newFoo("test", int32Ptr(1))
+	foo := newFoo("test", int32Ptr(1), int32Ptr(3))
 	//d := newKafkaTopic(foo)
 
 	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)

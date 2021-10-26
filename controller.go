@@ -7,13 +7,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	appsinformers "k8s.io/client-go/informers/apps/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -73,7 +71,6 @@ type Controller struct {
 func NewController(
 	kubeclientset kubernetes.Interface,
 	sampleclientset clientset.Interface,
-	deploymentInformer appsinformers.DeploymentInformer,
 	fooInformer informers.KafkaTopicInformer,
 	kafkaSdk kafkaops.Interface,
 ) *Controller {
@@ -112,20 +109,20 @@ func NewController(
 	// processing. This way, we don't need to implement custom logic for
 	// handling Deployment resources. More info on this pattern:
 	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
-	deploymentInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.handleObject,
-		UpdateFunc: func(old, new interface{}) {
-			newDepl := new.(*appsv1.Deployment)
-			oldDepl := old.(*appsv1.Deployment)
-			if newDepl.ResourceVersion == oldDepl.ResourceVersion {
-				// Periodic resync will send update events for all known Deployments.
-				// Two different versions of the same Deployment will always have different RVs.
-				return
-			}
-			controller.handleObject(new)
-		},
-		DeleteFunc: controller.handleObject,
-	})
+	//deploymentInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	//	AddFunc: controller.handleObject,
+	//	UpdateFunc: func(old, new interface{}) {
+	//		newDepl := new.(*appsv1.Deployment)
+	//		oldDepl := old.(*appsv1.Deployment)
+	//		if newDepl.ResourceVersion == oldDepl.ResourceVersion {
+	//			// Periodic resync will send update events for all known Deployments.
+	//			// Two different versions of the same Deployment will always have different RVs.
+	//			return
+	//		}
+	//		controller.handleObject(new)
+	//	},
+	//	DeleteFunc: controller.handleObject,
+	//})
 
 	return controller
 }
