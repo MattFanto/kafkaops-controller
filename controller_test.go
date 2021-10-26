@@ -90,7 +90,18 @@ func newFoo(name string, replicas *int32, partitions *int32) *kafkaopscontroller
 			StatusCode: kafkaopscontroller.EXISTS,
 			Replicas:   int(*replicas),
 			Partitions: int(*partitions),
-			Conditions: []metav1.Condition{},
+			Conditions: []metav1.Condition{
+				{
+					Type:               "Ready",
+					Status:             "True",
+					ObservedGeneration: 0,
+					LastTransitionTime: metav1.Time{
+						Time: time.Now(),
+					},
+					Reason:  "",
+					Message: "Topic ready and specification in sync",
+				},
+			},
 		},
 	}
 }
@@ -205,7 +216,7 @@ func checkAction(expected, actual core.Action, t *testing.T) {
 		expObject := e.GetObject()
 		object := a.GetObject()
 
-		if !reflect.DeepEqual(expObject, object) {
+		if !objectAlmostEquals(object, expObject) {
 			t.Errorf("Action %s %s has wrong object\nDiff:\n %s",
 				a.GetVerb(), a.GetResource().Resource, diff.ObjectGoPrintSideBySide(expObject, object))
 		}
@@ -221,6 +232,32 @@ func checkAction(expected, actual core.Action, t *testing.T) {
 	default:
 		t.Errorf("Uncaptured Action %s %s, you should explicitly add a case to capture it",
 			actual.GetVerb(), actual.GetResource().Resource)
+	}
+}
+
+func objectAlmostEquals(x, y runtime.Object) bool {
+	if reflect.TypeOf(x) != reflect.TypeOf(y) {
+		return false
+	}
+	switch x := x.(type) {
+	case *kafkaopscontroller.KafkaTopic:
+		// Avoid comparing the condition timestamp
+		y, _ := y.(*kafkaopscontroller.KafkaTopic)
+		y = y.DeepCopy()
+		for idx := range y.Status.Conditions {
+			y.Status.Conditions[idx].LastTransitionTime = metav1.Time{
+				Time: time.Unix(0, 0),
+			}
+		}
+		x = x.DeepCopy()
+		for idx := range x.Status.Conditions {
+			x.Status.Conditions[idx].LastTransitionTime = metav1.Time{
+				Time: time.Unix(0, 0),
+			}
+		}
+		return reflect.DeepEqual(x, y)
+	default:
+		return reflect.DeepEqual(x, y)
 	}
 }
 
@@ -259,7 +296,7 @@ func (f *fixture) expectUpdateKafkaTopicAction(foo *kafkaopscontroller.KafkaTopi
 func getKey(foo *kafkaopscontroller.KafkaTopic, t *testing.T) string {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(foo)
 	if err != nil {
-		t.Errorf("Unexpected error getting key for foo %v: %v", foo.Name, err)
+		t.Errorf("Unexpected but I'll definitely update the number of shards! error getting key for foo %v: %v", foo.Name, err)
 		return ""
 	}
 	return key
