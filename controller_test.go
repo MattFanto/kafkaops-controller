@@ -23,6 +23,7 @@ package main
 //)
 import (
 	"github.com/mattfanto/kafkaops-controller/pkg/resources/kafkaops"
+	fake2 "github.com/mattfanto/kafkaops-controller/pkg/resources/kafkaops/fake"
 	"reflect"
 	"testing"
 	"time"
@@ -56,8 +57,9 @@ type fixture struct {
 	// Objects to put in the store.
 	kafkaTopicsLister []*kafkaopscontroller.KafkaTopic
 	// Actions expected to happen on the client.
-	kubeactions []core.Action
-	actions     []core.Action
+	kubeactions  []core.Action
+	actions      []core.Action
+	kafkaActions []core.Action
 	// Objects from here preloaded into NewSimpleFake.
 	kubeobjects []runtime.Object
 	objects     []runtime.Object
@@ -69,11 +71,11 @@ func newFixture(t *testing.T) *fixture {
 	f.t = t
 	f.objects = []runtime.Object{}
 	f.kubeobjects = []runtime.Object{}
-	f.kafkaSdk = fakeKafkaSdk{}
+	f.kafkaSdk = &fake2.FakeKafkaSdk{}
 	return f
 }
 
-func newFoo(name string, replicas *int32, partitions *int32) *kafkaopscontroller.KafkaTopic {
+func newKafkaTopicResource(name string, replicas *int32, partitions *int32) *kafkaopscontroller.KafkaTopic {
 	return &kafkaopscontroller.KafkaTopic{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: kafkaopscontroller.SchemeGroupVersion.String()},
@@ -186,6 +188,21 @@ func (f *fixture) runController(fooName string, startInformers bool, expectError
 	if len(f.kubeactions) > len(k8sActions) {
 		f.t.Errorf("%d additional expected actions:%+v", len(f.kubeactions)-len(k8sActions), f.kubeactions[len(k8sActions):])
 	}
+
+	// Check that the topic has been created
+	for _, obj := range f.objects {
+		switch v := obj.(type) {
+		case *kafkaopscontroller.KafkaTopic:
+			topicStatus, err := f.kafkaSdk.CheckKafkaTopicStatus(v)
+			if err != nil {
+				f.t.Errorf("Error while checking topic status: %s", err)
+			}
+			if topicStatus.StatusCode == kafkaopscontroller.NOT_EXISTS {
+				f.t.Errorf("Expected topic '%s' does not exist", v.Spec.TopicName)
+			}
+
+		}
+	}
 }
 
 // checkAction verifies that expected and actual actions are equal and both have
@@ -244,12 +261,14 @@ func objectAlmostEquals(x, y runtime.Object) bool {
 		// Avoid comparing the condition timestamp
 		y, _ := y.(*kafkaopscontroller.KafkaTopic)
 		y = y.DeepCopy()
+		y.Status.Conditions = []metav1.Condition{}
 		for idx := range y.Status.Conditions {
 			y.Status.Conditions[idx].LastTransitionTime = metav1.Time{
 				Time: time.Unix(0, 0),
 			}
 		}
 		x = x.DeepCopy()
+		x.Status.Conditions = []metav1.Condition{}
 		for idx := range x.Status.Conditions {
 			x.Status.Conditions[idx].LastTransitionTime = metav1.Time{
 				Time: time.Unix(0, 0),
@@ -278,15 +297,15 @@ func filterInformerActions(actions []core.Action) []core.Action {
 	return ret
 }
 
-func (f *fixture) expectCreateDeploymentAction(d *apps.Deployment) {
-	f.kubeactions = append(f.kubeactions, core.NewCreateAction(schema.GroupVersionResource{Resource: "deployments"}, d.Namespace, d))
+func (f *fixture) expectCreateKafkaTopicAction(d *apps.Deployment) {
+	f.kafkaActions = append(f.kafkaActions, core.NewCreateAction(schema.GroupVersionResource{Resource: "kafkatopics"}, d.Namespace, d))
 }
 
 func (f *fixture) expectUpdateDeploymentAction(d *apps.Deployment) {
 	f.kubeactions = append(f.kubeactions, core.NewUpdateAction(schema.GroupVersionResource{Resource: "deployments"}, d.Namespace, d))
 }
 
-func (f *fixture) expectUpdateKafkaTopicAction(foo *kafkaopscontroller.KafkaTopic) {
+func (f *fixture) expectUpdateKafkaTopicStatusAction(foo *kafkaopscontroller.KafkaTopic) {
 	action := core.NewUpdateAction(schema.GroupVersionResource{Resource: "kafkatopics"}, foo.Namespace, foo)
 	// TODO: Until #38113 is merged, we can't use Subresource
 	//action.Subresource = "status"
@@ -302,60 +321,36 @@ func getKey(foo *kafkaopscontroller.KafkaTopic, t *testing.T) string {
 	return key
 }
 
-type fakeKafkaSdk struct {
-	topics []string
-}
-
-func (_ fakeKafkaSdk) CreateKafkaTopic(spec kafkaopscontroller.KafkaTopicSpec) (*kafkaopscontroller.KafkaTopicStatus, error) {
-	return &kafkaopscontroller.KafkaTopicStatus{
-		StatusCode: kafkaopscontroller.EXISTS,
-		Replicas:   1,
-		Partitions: 3,
-		Conditions: nil,
-	}, nil
-}
-
-func (_ fakeKafkaSdk) CheckKafkaTopicStatus(spec *kafkaopscontroller.KafkaTopicSpec) (*kafkaopscontroller.KafkaTopicStatus, error) {
-	return &kafkaopscontroller.KafkaTopicStatus{
-		StatusCode: kafkaopscontroller.EXISTS,
-		Replicas:   1,
-		Partitions: 3,
-		Conditions: nil,
-	}, nil
-}
-
-var _ kafkaops.Interface = fakeKafkaSdk{}
-
-func TestCreatesDeployment(t *testing.T) {
+func TestCreatesTopic(t *testing.T) {
 	f := newFixture(t)
-	foo := newFoo("test", int32Ptr(1), int32Ptr(3))
+	foo := newKafkaTopicResource("test", int32Ptr(1), int32Ptr(3))
 
 	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)
 	f.objects = append(f.objects, foo)
 
-	//f.expectCreateDeploymentAction(expDeployment)
-	f.expectUpdateKafkaTopicAction(foo)
+	//f.expectCreateKafkaTopicAction(expDeployment)
+	f.expectUpdateKafkaTopicStatusAction(foo)
 
 	f.run(getKey(foo, t))
 }
 
 func TestDoNothing(t *testing.T) {
 	f := newFixture(t)
-	foo := newFoo("test", int32Ptr(1), int32Ptr(3))
-	//d := newKafkaTopic(foo)
+	foo := newKafkaTopicResource("test", int32Ptr(1), int32Ptr(3))
 
 	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)
 	f.objects = append(f.objects, foo)
-	//f.deploymentLister = append(f.kafkaTopicsLister, foo)
-	//f.kubeobjects = append(f.kubeobjects, foo)
-
-	f.expectUpdateKafkaTopicAction(foo)
+	_, err := f.kafkaSdk.CreateKafkaTopic(foo)
+	if err != nil {
+		panic("")
+	}
+	f.expectUpdateKafkaTopicStatusAction(foo)
 	f.run(getKey(foo, t))
 }
 
 //func TestUpdateDeployment(t *testing.T) {
 //	f := newFixture(t)
-//	foo := newFoo("test", int32Ptr(1))
+//	foo := newKafkaTopicResource("test", int32Ptr(1))
 //	d := newKafkaTopic(foo)
 //
 //	// Update replicas
@@ -367,14 +362,14 @@ func TestDoNothing(t *testing.T) {
 //	f.deploymentLister = append(f.deploymentLister, d)
 //	f.kubeobjects = append(f.kubeobjects, d)
 //
-//	f.expectUpdateKafkaTopicAction(foo)
+//	f.expectUpdateKafkaTopicStatusAction(foo)
 //	f.expectUpdateDeploymentAction(expDeployment)
 //	f.run(getKey(foo, t))
 //}
 //
 //func TestNotControlledByUs(t *testing.T) {
 //	f := newFixture(t)
-//	foo := newFoo("test", int32Ptr(1))
+//	foo := newKafkaTopicResource("test", int32Ptr(1))
 //	d := newKafkaTopic(foo)
 //
 //	d.ObjectMeta.OwnerReferences = []metav1.OwnerReference{}

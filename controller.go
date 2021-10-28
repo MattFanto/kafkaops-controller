@@ -389,7 +389,7 @@ func (c *Controller) handleObject(obj interface{}) {
 //
 // This will now create a new topic
 func newKafkaTopic(c *Controller, kafkaTopic *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
-	topic, err := c.kafkaSdk.CreateKafkaTopic(kafkaTopic.Spec)
+	topic, err := c.kafkaSdk.CreateKafkaTopic(kafkaTopic)
 	if err != nil {
 		return nil, err
 	}
@@ -400,7 +400,7 @@ func newKafkaTopic(c *Controller, kafkaTopic *samplev1alpha1.KafkaTopic) (*sampl
 // checkKafkaTopic compare the topic configuration against specification in KafkaTopic resource.
 // KafkaTopic resource status will be updated accordingly.
 func checkKafkaTopic(c *Controller, kafkaTopic *samplev1alpha1.KafkaTopic) (*samplev1alpha1.KafkaTopicStatus, error) {
-	topicStatus, err := c.kafkaSdk.CheckKafkaTopicStatus(&kafkaTopic.Spec)
+	topicStatus, err := c.kafkaSdk.CheckKafkaTopicStatus(kafkaTopic)
 	if err != nil {
 		return nil, err
 	}

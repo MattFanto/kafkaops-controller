@@ -1,0 +1,72 @@
+package fake
+
+import (
+	"fmt"
+	kafkaopscontroller "github.com/mattfanto/kafkaops-controller/pkg/apis/kafkaopscontroller/v1alpha1"
+	"github.com/mattfanto/kafkaops-controller/pkg/resources/kafkaops"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	core "k8s.io/client-go/testing"
+)
+
+type FakeKafkaSdk struct {
+	kafkaActions []core.Action
+	topics       []*kafkaopscontroller.KafkaTopic
+}
+
+func (this *FakeKafkaSdk) isTopicAvailable(topic *kafkaopscontroller.KafkaTopic) bool {
+	for _, val := range this.topics {
+		if val.Spec.TopicName == topic.Spec.TopicName {
+			return true
+		}
+	}
+	return false
+}
+
+func (this *FakeKafkaSdk) CreateKafkaTopic(kafkaTopic *kafkaopscontroller.KafkaTopic) (*kafkaopscontroller.KafkaTopicStatus, error) {
+	this.kafkaActions = append(
+		this.kafkaActions,
+		core.NewCreateAction(
+			schema.GroupVersionResource{Resource: "kafkatopics"},
+			kafkaTopic.Namespace,
+			kafkaTopic,
+		),
+	)
+	if this.isTopicAvailable(kafkaTopic) {
+		return nil, fmt.Errorf("topic already exists")
+	}
+	this.topics = append(this.topics, kafkaTopic)
+	return &kafkaopscontroller.KafkaTopicStatus{
+		StatusCode: kafkaopscontroller.EXISTS,
+		Replicas:   1,
+		Partitions: 3,
+		Conditions: nil,
+	}, nil
+}
+
+func (this *FakeKafkaSdk) CheckKafkaTopicStatus(kafkaTopic *kafkaopscontroller.KafkaTopic) (*kafkaopscontroller.KafkaTopicStatus, error) {
+	//this.kafkaActions = append(
+	//	this.kafkaActions,
+	//	core.NewWatchAction(
+	//		schema.GroupVersionResource{Resource: "kafkatopics"},
+	//		kafkaTopic.Namespace,
+	//		kafkaTopic,
+	//	),
+	//)
+	if this.isTopicAvailable(kafkaTopic) {
+		return &kafkaopscontroller.KafkaTopicStatus{
+			StatusCode: kafkaopscontroller.EXISTS,
+			Replicas:   1,
+			Partitions: 3,
+			Conditions: nil,
+		}, nil
+	} else {
+		return &kafkaopscontroller.KafkaTopicStatus{
+			StatusCode: kafkaopscontroller.NOT_EXISTS,
+			Replicas:   0,
+			Partitions: 0,
+			Conditions: nil,
+		}, nil
+	}
+}
+
+var _ kafkaops.Interface = &FakeKafkaSdk{}
