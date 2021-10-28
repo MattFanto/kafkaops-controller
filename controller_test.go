@@ -340,6 +340,7 @@ func TestDoNothing(t *testing.T) {
 
 	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)
 	f.objects = append(f.objects, foo)
+	// We create the kafka topic so that the pipeline doesn't have to do anything
 	_, err := f.kafkaSdk.CreateKafkaTopic(foo)
 	if err != nil {
 		panic("")
@@ -348,38 +349,21 @@ func TestDoNothing(t *testing.T) {
 	f.run(getKey(foo, t))
 }
 
-//func TestUpdateDeployment(t *testing.T) {
-//	f := newFixture(t)
-//	foo := newKafkaTopicResource("test", int32Ptr(1))
-//	d := newKafkaTopic(foo)
-//
-//	// Update replicas
-//	foo.Spec.Replicas = int32Ptr(2)
-//	expDeployment := newKafkaTopic(foo)
-//
-//	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)
-//	f.objects = append(f.objects, foo)
-//	f.deploymentLister = append(f.deploymentLister, d)
-//	f.kubeobjects = append(f.kubeobjects, d)
-//
-//	f.expectUpdateKafkaTopicStatusAction(foo)
-//	f.expectUpdateDeploymentAction(expDeployment)
-//	f.run(getKey(foo, t))
-//}
-//
-//func TestNotControlledByUs(t *testing.T) {
-//	f := newFixture(t)
-//	foo := newKafkaTopicResource("test", int32Ptr(1))
-//	d := newKafkaTopic(foo)
-//
-//	d.ObjectMeta.OwnerReferences = []metav1.OwnerReference{}
-//
-//	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)
-//	f.objects = append(f.objects, foo)
-//	f.deploymentLister = append(f.deploymentLister, d)
-//	f.kubeobjects = append(f.kubeobjects, d)
-//
-//	f.runExpectError(getKey(foo, t))
-//}
+func TestKafkaTopicDeviation(t *testing.T) {
+	f := newFixture(t)
+	foo := newKafkaTopicResource("test", int32Ptr(1), int32Ptr(3))
+	existingFoo := newKafkaTopicResource("test", int32Ptr(1), int32Ptr(1))
+
+	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)
+	f.objects = append(f.objects, foo)
+	f.kafkaSdk.CreateKafkaTopic(existingFoo)
+
+	foo = foo.DeepCopy()
+	foo.Status.StatusCode = kafkaopscontroller.DEVIATED
+	foo.Status.Replicas = existingFoo.Status.Replicas
+	foo.Status.Partitions = existingFoo.Status.Partitions
+	f.expectUpdateKafkaTopicStatusAction(foo)
+	f.run(getKey(foo, t))
+}
 
 func int32Ptr(i int32) *int32 { return &i }

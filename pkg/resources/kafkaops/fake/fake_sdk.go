@@ -8,18 +8,23 @@ import (
 	core "k8s.io/client-go/testing"
 )
 
+// FakeKafkaSdk implement sdk.Interface mocking a kafka broker
+// created topic and existing topic are stored in topics array
+// while kafkaActions store a reference to the API call to the
+// interface to check which operation are applied to the broker
+// at the end of the test session
 type FakeKafkaSdk struct {
 	kafkaActions []core.Action
 	topics       []*kafkaopscontroller.KafkaTopic
 }
 
-func (this *FakeKafkaSdk) isTopicAvailable(topic *kafkaopscontroller.KafkaTopic) bool {
+func (this *FakeKafkaSdk) getExistingTopic(topic *kafkaopscontroller.KafkaTopic) *kafkaopscontroller.KafkaTopic {
 	for _, val := range this.topics {
 		if val.Spec.TopicName == topic.Spec.TopicName {
-			return true
+			return val
 		}
 	}
-	return false
+	return nil
 }
 
 func (this *FakeKafkaSdk) CreateKafkaTopic(kafkaTopic *kafkaopscontroller.KafkaTopic) (*kafkaopscontroller.KafkaTopicStatus, error) {
@@ -31,7 +36,7 @@ func (this *FakeKafkaSdk) CreateKafkaTopic(kafkaTopic *kafkaopscontroller.KafkaT
 			kafkaTopic,
 		),
 	)
-	if this.isTopicAvailable(kafkaTopic) {
+	if this.getExistingTopic(kafkaTopic) != nil {
 		return nil, fmt.Errorf("topic already exists")
 	}
 	this.topics = append(this.topics, kafkaTopic)
@@ -44,19 +49,12 @@ func (this *FakeKafkaSdk) CreateKafkaTopic(kafkaTopic *kafkaopscontroller.KafkaT
 }
 
 func (this *FakeKafkaSdk) CheckKafkaTopicStatus(kafkaTopic *kafkaopscontroller.KafkaTopic) (*kafkaopscontroller.KafkaTopicStatus, error) {
-	//this.kafkaActions = append(
-	//	this.kafkaActions,
-	//	core.NewWatchAction(
-	//		schema.GroupVersionResource{Resource: "kafkatopics"},
-	//		kafkaTopic.Namespace,
-	//		kafkaTopic,
-	//	),
-	//)
-	if this.isTopicAvailable(kafkaTopic) {
+	existingTopic := this.getExistingTopic(kafkaTopic)
+	if existingTopic != nil {
 		return &kafkaopscontroller.KafkaTopicStatus{
 			StatusCode: kafkaopscontroller.EXISTS,
-			Replicas:   1,
-			Partitions: 3,
+			Replicas:   int(*existingTopic.Spec.Replicas),
+			Partitions: int(*existingTopic.Spec.Partitions),
 			Conditions: nil,
 		}, nil
 	} else {
