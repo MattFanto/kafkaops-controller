@@ -91,18 +91,8 @@ func newKafkaTopicResource(name string, replicas *int32, partitions *int32) *kaf
 			StatusCode: kafkaopscontroller.EXISTS,
 			Replicas:   int(*replicas),
 			Partitions: int(*partitions),
-			Conditions: []metav1.Condition{
-				{
-					Type:               "Ready",
-					Status:             "True",
-					ObservedGeneration: 0,
-					LastTransitionTime: metav1.Time{
-						Time: time.Now(),
-					},
-					Reason:  "",
-					Message: "Topic ready and specification in sync",
-				},
-			},
+			// not tested
+			Conditions: []metav1.Condition{},
 		},
 	}
 }
@@ -134,15 +124,15 @@ func (f *fixture) newController() (*Controller, informers.SharedInformerFactory,
 	return c, i, k8sI
 }
 
-func (f *fixture) run(fooName string) {
-	f.runController(fooName, true, false)
+func (f *fixture) run(kafkaTopicName string) {
+	f.runController(kafkaTopicName, true, false)
 }
 
-func (f *fixture) runExpectError(fooName string) {
-	f.runController(fooName, true, true)
+func (f *fixture) runExpectError(kafkaTopicName string) {
+	f.runController(kafkaTopicName, true, true)
 }
 
-func (f *fixture) runController(fooName string, startInformers bool, expectError bool) {
+func (f *fixture) runController(kafkaTopicName string, startInformers bool, expectError bool) {
 	c, i, k8sI := f.newController()
 	if startInformers {
 		stopCh := make(chan struct{})
@@ -151,11 +141,11 @@ func (f *fixture) runController(fooName string, startInformers bool, expectError
 		k8sI.Start(stopCh)
 	}
 
-	err := c.syncHandler(fooName)
+	err := c.syncHandler(kafkaTopicName)
 	if !expectError && err != nil {
-		f.t.Errorf("error syncing foo: %v", err)
+		f.t.Errorf("error syncing kafkatopic: %v", err)
 	} else if expectError && err == nil {
-		f.t.Error("expected error syncing foo, got nil")
+		f.t.Error("expected error syncing kafkatopic, got nil")
 	}
 
 	actions := filterInformerActions(f.client.Actions())
@@ -288,17 +278,17 @@ func filterInformerActions(actions []core.Action) []core.Action {
 	return ret
 }
 
-func (f *fixture) expectUpdateKafkaTopicStatusAction(foo *kafkaopscontroller.KafkaTopic) {
-	action := core.NewUpdateAction(schema.GroupVersionResource{Resource: "kafkatopics"}, foo.Namespace, foo)
+func (f *fixture) expectUpdateKafkaTopicStatusAction(kafkaTopic *kafkaopscontroller.KafkaTopic) {
+	action := core.NewUpdateAction(schema.GroupVersionResource{Resource: "kafkatopics"}, kafkaTopic.Namespace, kafkaTopic)
 	// TODO: Until #38113 is merged, we can't use Subresource
 	//action.Subresource = "status"
 	f.actions = append(f.actions, action)
 }
 
-func getKey(foo *kafkaopscontroller.KafkaTopic, t *testing.T) string {
-	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(foo)
+func getKey(kafkaTopic *kafkaopscontroller.KafkaTopic, t *testing.T) string {
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(kafkaTopic)
 	if err != nil {
-		t.Errorf("Unexpected but I'll definitely update the number of shards! error getting key for foo %v: %v", foo.Name, err)
+		t.Errorf("Unexpected but I'll definitely update the number of shards! error getting key for kafkaTopic %v: %v", kafkaTopic.Name, err)
 		return ""
 	}
 	return key
@@ -306,44 +296,44 @@ func getKey(foo *kafkaopscontroller.KafkaTopic, t *testing.T) string {
 
 func TestCreatesTopic(t *testing.T) {
 	f := newFixture(t)
-	foo := newKafkaTopicResource("test", int32Ptr(1), int32Ptr(3))
+	kafkaTopic := newKafkaTopicResource("test", int32Ptr(1), int32Ptr(3))
 
-	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)
-	f.objects = append(f.objects, foo)
-	f.expectUpdateKafkaTopicStatusAction(foo)
+	f.kafkaTopicsLister = append(f.kafkaTopicsLister, kafkaTopic)
+	f.objects = append(f.objects, kafkaTopic)
+	f.expectUpdateKafkaTopicStatusAction(kafkaTopic)
 
-	f.run(getKey(foo, t))
+	f.run(getKey(kafkaTopic, t))
 }
 
 func TestDoNothing(t *testing.T) {
 	f := newFixture(t)
-	foo := newKafkaTopicResource("test", int32Ptr(1), int32Ptr(3))
+	kafkaTopic := newKafkaTopicResource("test", int32Ptr(1), int32Ptr(3))
 
-	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)
-	f.objects = append(f.objects, foo)
+	f.kafkaTopicsLister = append(f.kafkaTopicsLister, kafkaTopic)
+	f.objects = append(f.objects, kafkaTopic)
 	// We create the kafka topic so that the pipeline doesn't have to do anything
 	//goland:noinspection ALL
-	f.kafkaSdk.CreateKafkaTopic(foo)
-	f.expectUpdateKafkaTopicStatusAction(foo)
-	f.run(getKey(foo, t))
+	f.kafkaSdk.CreateKafkaTopic(kafkaTopic)
+	f.expectUpdateKafkaTopicStatusAction(kafkaTopic)
+	f.run(getKey(kafkaTopic, t))
 }
 
 func TestKafkaTopicDeviation(t *testing.T) {
 	f := newFixture(t)
-	foo := newKafkaTopicResource("test", int32Ptr(1), int32Ptr(3))
-	existingFoo := newKafkaTopicResource("test", int32Ptr(1), int32Ptr(1))
+	kafkaTopic := newKafkaTopicResource("test", int32Ptr(1), int32Ptr(3))
+	existingKafkaTopic := newKafkaTopicResource("test", int32Ptr(1), int32Ptr(1))
 
-	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)
-	f.objects = append(f.objects, foo)
+	f.kafkaTopicsLister = append(f.kafkaTopicsLister, kafkaTopic)
+	f.objects = append(f.objects, kafkaTopic)
 	//goland:noinspection ALL
-	f.kafkaSdk.CreateKafkaTopic(existingFoo)
+	f.kafkaSdk.CreateKafkaTopic(existingKafkaTopic)
 
-	foo = foo.DeepCopy()
-	foo.Status.StatusCode = kafkaopscontroller.DEVIATED
-	foo.Status.Replicas = existingFoo.Status.Replicas
-	foo.Status.Partitions = existingFoo.Status.Partitions
-	f.expectUpdateKafkaTopicStatusAction(foo)
-	f.run(getKey(foo, t))
+	kafkaTopic = kafkaTopic.DeepCopy()
+	kafkaTopic.Status.StatusCode = kafkaopscontroller.DEVIATED
+	kafkaTopic.Status.Replicas = existingKafkaTopic.Status.Replicas
+	kafkaTopic.Status.Partitions = existingKafkaTopic.Status.Partitions
+	f.expectUpdateKafkaTopicStatusAction(kafkaTopic)
+	f.run(getKey(kafkaTopic, t))
 }
 
 func int32Ptr(i int32) *int32 { return &i }
