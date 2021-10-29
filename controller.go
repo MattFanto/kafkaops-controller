@@ -71,7 +71,7 @@ type Controller struct {
 func NewController(
 	kubeclientset kubernetes.Interface,
 	sampleclientset clientset.Interface,
-	fooInformer informers.KafkaTopicInformer,
+	kafkaTopicInformer informers.KafkaTopicInformer,
 	kafkaSdk kafkaops.Interface,
 ) *Controller {
 
@@ -88,19 +88,19 @@ func NewController(
 	controller := &Controller{
 		kubeclientset:     kubeclientset,
 		sampleclientset:   sampleclientset,
-		kafkaTopicsLister: fooInformer.Lister(),
-		informerSynced:    fooInformer.Informer().HasSynced,
-		workqueue:         workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Foos"),
+		kafkaTopicsLister: kafkaTopicInformer.Lister(),
+		informerSynced:    kafkaTopicInformer.Informer().HasSynced,
+		workqueue:         workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "KafkaTopics"),
 		recorder:          recorder,
 		kafkaSdk:          kafkaSdk,
 	}
 
 	klog.Info("Setting up event handlers")
 	// Set up an event handler for when KafkaTopic resources change
-	fooInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.enqueueFoo,
+	kafkaTopicInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: controller.enqueueKafkaTopic,
 		UpdateFunc: func(old, new interface{}) {
-			controller.enqueueFoo(new)
+			controller.enqueueKafkaTopic(new)
 		},
 	})
 	// Set up an event handler for when Deployment resources change. This
@@ -330,10 +330,10 @@ func (c *Controller) updateKafkaTopicStatus(kafkaTopic *samplev1alpha1.KafkaTopi
 	return err
 }
 
-// enqueueFoo takes a KafkaTopic resource and converts it into a namespace/name
+// enqueueKafkaTopic takes a KafkaTopic resource and converts it into a namespace/name
 // string which is then put onto the work queue. This method should *not* be
 // passed resources of any type other than KafkaTopic.
-func (c *Controller) enqueueFoo(obj interface{}) {
+func (c *Controller) enqueueKafkaTopic(obj interface{}) {
 	var key string
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
@@ -372,13 +372,13 @@ func (c *Controller) handleObject(obj interface{}) {
 			return
 		}
 
-		foo, err := c.kafkaTopicsLister.KafkaTopics(object.GetNamespace()).Get(ownerRef.Name)
+		kafkaTopic, err := c.kafkaTopicsLister.KafkaTopics(object.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
-			klog.V(4).Infof("ignoring orphaned object '%s' of foo '%s'", object.GetSelfLink(), ownerRef.Name)
+			klog.V(4).Infof("ignoring orphaned object '%s' of kafkatopic '%s'", object.GetSelfLink(), ownerRef.Name)
 			return
 		}
 
-		c.enqueueFoo(foo)
+		c.enqueueKafkaTopic(kafkaTopic)
 		return
 	}
 }
