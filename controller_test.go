@@ -28,7 +28,6 @@ import (
 	"testing"
 	"time"
 
-	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -252,6 +251,8 @@ func checkAction(expected, actual core.Action, t *testing.T) {
 	}
 }
 
+// objectAlmostEquals implements custom logic to compare two runtime.Object
+// based on the object type
 func objectAlmostEquals(x, y runtime.Object) bool {
 	if reflect.TypeOf(x) != reflect.TypeOf(y) {
 		return false
@@ -262,18 +263,8 @@ func objectAlmostEquals(x, y runtime.Object) bool {
 		y, _ := y.(*kafkaopscontroller.KafkaTopic)
 		y = y.DeepCopy()
 		y.Status.Conditions = []metav1.Condition{}
-		for idx := range y.Status.Conditions {
-			y.Status.Conditions[idx].LastTransitionTime = metav1.Time{
-				Time: time.Unix(0, 0),
-			}
-		}
 		x = x.DeepCopy()
 		x.Status.Conditions = []metav1.Condition{}
-		for idx := range x.Status.Conditions {
-			x.Status.Conditions[idx].LastTransitionTime = metav1.Time{
-				Time: time.Unix(0, 0),
-			}
-		}
 		return reflect.DeepEqual(x, y)
 	default:
 		return reflect.DeepEqual(x, y)
@@ -295,14 +286,6 @@ func filterInformerActions(actions []core.Action) []core.Action {
 	}
 
 	return ret
-}
-
-func (f *fixture) expectCreateKafkaTopicAction(d *apps.Deployment) {
-	f.kafkaActions = append(f.kafkaActions, core.NewCreateAction(schema.GroupVersionResource{Resource: "kafkatopics"}, d.Namespace, d))
-}
-
-func (f *fixture) expectUpdateDeploymentAction(d *apps.Deployment) {
-	f.kubeactions = append(f.kubeactions, core.NewUpdateAction(schema.GroupVersionResource{Resource: "deployments"}, d.Namespace, d))
 }
 
 func (f *fixture) expectUpdateKafkaTopicStatusAction(foo *kafkaopscontroller.KafkaTopic) {
@@ -327,8 +310,6 @@ func TestCreatesTopic(t *testing.T) {
 
 	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)
 	f.objects = append(f.objects, foo)
-
-	//f.expectCreateKafkaTopicAction(expDeployment)
 	f.expectUpdateKafkaTopicStatusAction(foo)
 
 	f.run(getKey(foo, t))
@@ -341,10 +322,8 @@ func TestDoNothing(t *testing.T) {
 	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)
 	f.objects = append(f.objects, foo)
 	// We create the kafka topic so that the pipeline doesn't have to do anything
-	_, err := f.kafkaSdk.CreateKafkaTopic(foo)
-	if err != nil {
-		panic("")
-	}
+	//goland:noinspection ALL
+	f.kafkaSdk.CreateKafkaTopic(foo)
 	f.expectUpdateKafkaTopicStatusAction(foo)
 	f.run(getKey(foo, t))
 }
@@ -356,6 +335,7 @@ func TestKafkaTopicDeviation(t *testing.T) {
 
 	f.kafkaTopicsLister = append(f.kafkaTopicsLister, foo)
 	f.objects = append(f.objects, foo)
+	//goland:noinspection ALL
 	f.kafkaSdk.CreateKafkaTopic(existingFoo)
 
 	foo = foo.DeepCopy()

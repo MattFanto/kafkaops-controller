@@ -4,18 +4,12 @@ import (
 	"fmt"
 	kafkaopscontroller "github.com/mattfanto/kafkaops-controller/pkg/apis/kafkaopscontroller/v1alpha1"
 	"github.com/mattfanto/kafkaops-controller/pkg/resources/kafkaops"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	core "k8s.io/client-go/testing"
 )
 
 // FakeKafkaSdk implement sdk.Interface mocking a kafka broker
 // created topic and existing topic are stored in topics array
-// while kafkaActions store a reference to the API call to the
-// interface to check which operation are applied to the broker
-// at the end of the test session
 type FakeKafkaSdk struct {
-	kafkaActions []core.Action
-	topics       []*kafkaopscontroller.KafkaTopic
+	topics []*kafkaopscontroller.KafkaTopic
 }
 
 func (this *FakeKafkaSdk) getExistingTopic(topic *kafkaopscontroller.KafkaTopic) *kafkaopscontroller.KafkaTopic {
@@ -28,14 +22,6 @@ func (this *FakeKafkaSdk) getExistingTopic(topic *kafkaopscontroller.KafkaTopic)
 }
 
 func (this *FakeKafkaSdk) CreateKafkaTopic(kafkaTopic *kafkaopscontroller.KafkaTopic) (*kafkaopscontroller.KafkaTopicStatus, error) {
-	this.kafkaActions = append(
-		this.kafkaActions,
-		core.NewCreateAction(
-			schema.GroupVersionResource{Resource: "kafkatopics"},
-			kafkaTopic.Namespace,
-			kafkaTopic,
-		),
-	)
 	if this.getExistingTopic(kafkaTopic) != nil {
 		return nil, fmt.Errorf("topic already exists")
 	}
