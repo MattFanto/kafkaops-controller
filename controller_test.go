@@ -1,26 +1,5 @@
 package main
 
-//import (
-//	"fmt"
-//	informers "github.com/mattfanto/kafkaops-controller/pkg/generated/informers/externalversions"
-//	"k8s.io/apimachinery/pkg/runtime/schema"
-//	"k8s.io/apimachinery/pkg/util/diff"
-//	kubeinformers "k8s.io/client-go/informers"
-//	"k8s.io/client-go/tools/cache"
-//	"k8s.io/client-go/tools/record"
-//
-//	"reflect"
-//	"testing"
-//	"time"
-//
-//	kafkaopscontroller "github.com/mattfanto/kafkaops-controller/pkg/apis/kafkaopscontroller/v1alpha1"
-//	"github.com/mattfanto/kafkaops-controller/pkg/generated/clientset/versioned/fake"
-//	apps "k8s.io/api/apps/v1"
-//	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-//	"k8s.io/apimachinery/pkg/runtime"
-//	k8sfake "k8s.io/client-go/kubernetes/fake"
-//	core "k8s.io/client-go/testing"
-//)
 import (
 	"github.com/mattfanto/kafkaops-controller/pkg/resources/kafkaops"
 	fake2 "github.com/mattfanto/kafkaops-controller/pkg/resources/kafkaops/fake"

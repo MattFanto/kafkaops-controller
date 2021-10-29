@@ -31,35 +31,19 @@ func NewKafkaSdk(bootstrapServer string) (Interface, error) {
 	return kafkaSdk, nil
 }
 
-func getClient() (*kafka.AdminClient, error) {
-	// TODO Bootstrap server dynamic config
-	cf := kafka.ConfigMap{
-		"bootstrap.servers": "localhost:9092",
-	}
-	a, err := kafka.NewAdminClient(&cf)
-	if err != nil {
-		return nil, err
-	}
-	return a, nil
-}
-
 // CreateKafkaTopic creates a topic in Kafka according to the specification defined in KafkaTopicSpec
-func (kafkaSdr *KafkaSdk) CreateKafkaTopic(kafkaTopic *v1alpha1.KafkaTopic) (*v1alpha1.KafkaTopicStatus, error) {
+func (kafkaSdk *KafkaSdk) CreateKafkaTopic(kafkaTopic *v1alpha1.KafkaTopic) (*v1alpha1.KafkaTopicStatus, error) {
 	spec := kafkaTopic.Spec
 	maxDur, err := time.ParseDuration("60s")
 	if err != nil {
 		panic("ParseDuration(60s)")
-	}
-	a, err := getClient()
-	if err != nil {
-		return nil, err
 	}
 	// Contexts are used to abort or limit the amount of time
 	// the Admin call blocks waiting for a result.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	results, err := a.CreateTopics(
+	results, err := kafkaSdk.adminClient.CreateTopics(
 		ctx,
 		// Multiple topics can be created simultaneously
 		// by providing more TopicSpecification structs here.
@@ -76,7 +60,6 @@ func (kafkaSdr *KafkaSdk) CreateKafkaTopic(kafkaTopic *v1alpha1.KafkaTopic) (*v1
 	if len(results) != 1 {
 		panic("Expected one results after issuing create for one topic")
 	}
-	a.Close()
 	result := results[0]
 
 	/**
@@ -98,12 +81,8 @@ func (kafkaSdr *KafkaSdk) CreateKafkaTopic(kafkaTopic *v1alpha1.KafkaTopic) (*v1
 // In particular the following checks are performed:
 // * topic existence
 // * topic configuration matches
-func (KafkaSdk *KafkaSdk) CheckKafkaTopicStatus(kafkaTopic *v1alpha1.KafkaTopic) (*v1alpha1.KafkaTopicStatus, error) {
+func (kafkaSdk *KafkaSdk) CheckKafkaTopicStatus(kafkaTopic *v1alpha1.KafkaTopic) (*v1alpha1.KafkaTopicStatus, error) {
 	spec := kafkaTopic.Spec
-	a, err := getClient()
-	if err != nil {
-		return nil, err
-	}
 	// Contexts are used to abort or limit the amount of time
 	// the Admin call blocks waiting for a config.
 	ctx, cancel := context.WithCancel(context.Background())
@@ -113,7 +92,7 @@ func (KafkaSdk *KafkaSdk) CheckKafkaTopicStatus(kafkaTopic *v1alpha1.KafkaTopic)
 	topicStatus := v1alpha1.KafkaTopicStatus{}
 
 	dur, _ := time.ParseDuration("20s")
-	configs, err := a.DescribeConfigs(ctx,
+	configs, err := kafkaSdk.adminClient.DescribeConfigs(ctx,
 		[]kafka.ConfigResource{{Type: kafka.ResourceTopic, Name: spec.TopicName}},
 		kafka.SetAdminRequestTimeout(dur))
 	if err != nil {
@@ -137,7 +116,7 @@ func (KafkaSdk *KafkaSdk) CheckKafkaTopicStatus(kafkaTopic *v1alpha1.KafkaTopic)
 		topicStatus.StatusCode = v1alpha1.UNKNOWN
 	}
 
-	metadata, err := a.GetMetadata(&spec.TopicName, false, int(dur.Milliseconds()))
+	metadata, err := kafkaSdk.adminClient.GetMetadata(&spec.TopicName, false, int(dur.Milliseconds()))
 	if err != nil {
 		return nil, err
 	}
@@ -146,8 +125,6 @@ func (KafkaSdk *KafkaSdk) CheckKafkaTopicStatus(kafkaTopic *v1alpha1.KafkaTopic)
 		topicStatus.Partitions = len(partitions)
 		topicStatus.Replicas = len(partitions[0].Replicas)
 	}
-
-	a.Close()
 
 	return &topicStatus, nil
 }
