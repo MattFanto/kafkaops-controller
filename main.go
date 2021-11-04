@@ -34,8 +34,9 @@ import (
 )
 
 var (
-	masterURL  string
-	kubeconfig string
+	masterURL       string
+	kubeconfig      string
+	bootstrapSevers string
 )
 
 func main() {
@@ -63,7 +64,7 @@ func main() {
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	exampleInformerFactory := informers.NewSharedInformerFactory(exampleClient, time.Second*30)
 
-	kafkaSdk, err := kafkaops.NewKafkaSdk("localhost:9092")
+	kafkaSdk, err := kafkaops.NewKafkaSdk(bootstrapSevers)
 	if err != nil {
 		panic(err)
 	}
@@ -88,4 +89,6 @@ func main() {
 func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	// TODO maybe a good idea to remove this one and specify the bootstrap servers in KafkaTopic CRD to allow management of multiple severs
+	flag.StringVar(&bootstrapSevers, "bootstrap-servers", "", "Bootstrap server list")
 }
