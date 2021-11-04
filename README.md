@@ -11,6 +11,10 @@ Kubernetes CRD, topics desired state can be version controlled via Kubernetes ma
 your existing tools and pipelines.
 
 
+## Notes
+
+This is just a POC for the moment don't use it in production
+
 ## Contrib
 
 The update-codegen script will automatically generate the following files & directories:

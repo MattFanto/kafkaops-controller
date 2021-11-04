@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+// Interface for the controller to interact with the Kafka cluster
+// the idea is that this package implements and use model from k8s (e.g. KafkaTopic CRD as input)
 type Interface interface {
 	CreateKafkaTopic(spec *v1alpha1.KafkaTopic) (*v1alpha1.KafkaTopicStatus, error)
 	CheckKafkaTopicStatus(spec *v1alpha1.KafkaTopic) (*v1alpha1.KafkaTopicStatus, error)

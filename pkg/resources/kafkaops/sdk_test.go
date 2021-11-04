@@ -1,3 +1,7 @@
+/**
+These tests won't work without Kafka up and running I need to create a fake for kafka-go-library, but this is out
+of scope for the moment
+*/
 package kafkaops
 
 import (
