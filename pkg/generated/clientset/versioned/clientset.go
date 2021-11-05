@@ -21,27 +21,27 @@ package versioned
 import (
 	"fmt"
 
+	kafkaopscontrollerv1alpha1 "github.com/mattfanto/kafkaops-controller/pkg/generated/clientset/versioned/typed/kafkaopscontroller/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
-	samplecontrollerv1alpha1 "k8s.io/sample-controller/pkg/generated/clientset/versioned/typed/samplecontroller/v1alpha1"
 )
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	SamplecontrollerV1alpha1() samplecontrollerv1alpha1.SamplecontrollerV1alpha1Interface
+	KafkaopscontrollerV1alpha1() kafkaopscontrollerv1alpha1.KafkaopscontrollerV1alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	samplecontrollerV1alpha1 *samplecontrollerv1alpha1.SamplecontrollerV1alpha1Client
+	kafkaopscontrollerV1alpha1 *kafkaopscontrollerv1alpha1.KafkaopscontrollerV1alpha1Client
 }
 
-// SamplecontrollerV1alpha1 retrieves the SamplecontrollerV1alpha1Client
-func (c *Clientset) SamplecontrollerV1alpha1() samplecontrollerv1alpha1.SamplecontrollerV1alpha1Interface {
-	return c.samplecontrollerV1alpha1
+// KafkaopscontrollerV1alpha1 retrieves the KafkaopscontrollerV1alpha1Client
+func (c *Clientset) KafkaopscontrollerV1alpha1() kafkaopscontrollerv1alpha1.KafkaopscontrollerV1alpha1Interface {
+	return c.kafkaopscontrollerV1alpha1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -65,7 +65,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
-	cs.samplecontrollerV1alpha1, err = samplecontrollerv1alpha1.NewForConfig(&configShallowCopy)
+	cs.kafkaopscontrollerV1alpha1, err = kafkaopscontrollerv1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
-	cs.samplecontrollerV1alpha1 = samplecontrollerv1alpha1.NewForConfigOrDie(c)
+	cs.kafkaopscontrollerV1alpha1 = kafkaopscontrollerv1alpha1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -90,7 +90,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.samplecontrollerV1alpha1 = samplecontrollerv1alpha1.New(c)
+	cs.kafkaopscontrollerV1alpha1 = kafkaopscontrollerv1alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs
