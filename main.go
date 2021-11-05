@@ -74,5 +74,5 @@ func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	// TODO maybe a good idea to remove this one and specify the bootstrap servers in KafkaTopic CRD to allow management of multiple severs
-	flag.StringVar(&bootstrapSevers, "bootstrap-servers", "", "Bootstrap server list")
+	flag.StringVar(&bootstrapSevers, "bootstrap-servers", "", "Bootstrap servers list")
 }

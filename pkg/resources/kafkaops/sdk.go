@@ -36,10 +36,6 @@ func NewKafkaSdk(bootstrapServer string) (Interface, error) {
 // CreateKafkaTopic creates a topic in Kafka according to the specification defined in KafkaTopicSpec
 func (kafkaSdk *KafkaSdk) CreateKafkaTopic(kafkaTopic *v1alpha1.KafkaTopic) (*v1alpha1.KafkaTopicStatus, error) {
 	spec := kafkaTopic.Spec
-	maxDur, err := time.ParseDuration("60s")
-	if err != nil {
-		panic("ParseDuration(60s)")
-	}
 	// Contexts are used to abort or limit the amount of time
 	// the Admin call blocks waiting for a result.
 	ctx, cancel := context.WithCancel(context.Background())
@@ -54,7 +50,7 @@ func (kafkaSdk *KafkaSdk) CreateKafkaTopic(kafkaTopic *v1alpha1.KafkaTopic) (*v1
 			NumPartitions:     int(*spec.Replicas),
 			ReplicationFactor: int(*spec.Replicas)}},
 		// Admin options
-		kafka.SetAdminOperationTimeout(maxDur))
+		kafka.SetAdminOperationTimeout(60*time.Second))
 	if err != nil {
 		fmt.Printf("Failed to create topic: %v\n", err)
 		return nil, err
@@ -65,7 +61,7 @@ func (kafkaSdk *KafkaSdk) CreateKafkaTopic(kafkaTopic *v1alpha1.KafkaTopic) (*v1
 	result := results[0]
 
 	/**
-	TODO remap errors
+	TODO remap all errors
 	*/
 	if result.Error.Code() == kafka.ErrTopicAlreadyExists {
 
@@ -110,11 +106,12 @@ func (kafkaSdk *KafkaSdk) CheckKafkaTopicStatus(kafkaTopic *v1alpha1.KafkaTopic)
 	/**
 	TODO remap errors
 	*/
-	if config.Error.Code() == kafka.ErrNoError {
+	switch config.Error.Code() {
+	case kafka.ErrNoError:
 		topicStatus.StatusCode = v1alpha1.EXISTS
-	} else if config.Error.Code() == kafka.ErrUnknownTopicOrPart {
+	case kafka.ErrUnknownTopicOrPart:
 		topicStatus.StatusCode = v1alpha1.NOT_EXISTS
-	} else {
+	default:
 		topicStatus.StatusCode = v1alpha1.UNKNOWN
 	}
 
