@@ -55,7 +55,6 @@ func main() {
 	controller := NewController(
 		kubeClient,
 		exampleClient,
-		//kubeInformerFactory.Apps().V1().Deployments(),
 		exampleInformerFactory.Kafkaopscontroller().V1alpha1().KafkaTopics(),
 		kafkaSdk,
 	)
