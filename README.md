@@ -2,14 +2,18 @@
 
 A Kubernetes controller managing Kafka topic defined with a CustomResourceDefinition (CRD).
 
+![diagram](/docs/imgs/diagram.png)
+
 **Note:** go-get or vendor this package as `github.com/mattfanto/kafkaops-controller`.
 
 ## Details
 
 Kafka Ops Controller is resource as code tool which allows you to automate the management of your Kafka topics from 
 Kubernetes CRD, topics desired state can be version controlled via Kubernetes manifest file and applied with 
-your existing tools and pipelines.
+your existing tools and pipelines (e.g. Helm, Argo-CD, ...).
 
+Topics are defined and versioned as K8S manifest files (KafkaTopic CRD) and when applied to the cluster kafkaops-controller
+listen for new topic or changes to apply the desired state to your Kafka cluster.
 
 ## Notes
 
