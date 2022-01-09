@@ -15,6 +15,24 @@ your existing tools and pipelines (e.g. Helm, Argo-CD, ...).
 Topics are defined and versioned as K8S manifest files (KafkaTopic CRD) and when applied to the cluster kafkaops-controller
 listen for new topic or changes to apply the desired state to your Kafka cluster.
 
+## Getting Started
+
+### Installation 
+
+First install the custom resource definition available under [artifacts/examples](artifacts/examples)
+```shell
+kubectl create -f artifcats/example/crd.yaml
+```
+
+... TODO ... docker image and pod for kafkaops-controller
+
+### Cleanup
+
+You can clean up the created CustomResourceDefinition with:
+```shell
+kubectl delete crd kafkatopics.kafkaopscontroller.mattfanto.github.com
+```
+
 ## Notes
 
 This is just a POC for the moment don't use it in production
