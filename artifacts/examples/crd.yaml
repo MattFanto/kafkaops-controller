@@ -2,10 +2,6 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: kafkatopics.kafkaopscontroller.mattfanto.github.com
-  # for more information on the below annotation, please see
-  # https://github.com/kubernetes/enhancements/blob/master/keps/sig-api-machinery/2337-k8s.io-group-protection/README.md
-  annotations:
-    "api-approved.kubernetes.io": "unapproved, experimental-only; please get an approval from Kubernetes API reviewers if you're trying to develop a CRD in the *.k8s.io or *.kubernetes.io groups"
 spec:
   group: kafkaopscontroller.mattfanto.github.com
   versions:
@@ -39,10 +35,9 @@ spec:
                   type: integer
                 conditions:
                   description: List of status conditions to indicate the status of a
-                    CertificateRequest. Known condition types are `Ready` and `InvalidRequest`.
+                    kafka topic compared to the specification above.
                   items:
-                    description: CertificateRequestCondition contains condition information
-                      for a CertificateRequest.
+                    description: All status condition information
                     properties:
                       lastTransitionTime:
                         description: LastTransitionTime is the timestamp corresponding
