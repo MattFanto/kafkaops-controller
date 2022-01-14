@@ -16,6 +16,10 @@ spec:
         - image: ghcr.io/mattfanto/kafkaops-controller:0.1-snapshot
           imagePullPolicy: IfNotPresent
           name: kafkaops-controller
+          args:
+            - -bootstrap-servers=kafka-0.kafka-headless.kafkaops.svc.cluster.local:9092
+          command:
+            - /kafkaops-controller
           resources:
             limits:
               cpu: 100m
