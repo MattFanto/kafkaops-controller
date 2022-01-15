@@ -5,10 +5,6 @@ A Kubernetes controller managing Kafka topic defined with a CustomResourceDefini
 ![diagram](/docs/imgs/diagram.png)
 
 
-CLI example:
-![gif](/docs/imgs/cli-example.gif)
-
-
 **Note:** go-get or vendor this package as `github.com/mattfanto/kafkaops-controller`.
 
 ## Details
@@ -24,16 +20,42 @@ listen for new topic or changes to apply the desired state to your Kafka cluster
 
 ### Installation 
 
-First install the CRD, deployment and roles definition available under [artifacts/deployment.yaml](artifacts/deployment.yaml)
+First install the CRD, deployment and roles definition available under [artifacts/deployment.yaml](artifacts/deployment.yaml), under a new kafkaops namespace
 ```shell
 kubectl create namespace kafkaops
-kubectl apply -n kafkaops -f artifacts/deployment.yaml
+kubectl apply -n kafkaops -f https://github.com/mattfanto/kafkaops-controller/releases/latest/download/deployment.yaml
 ```
 
-You can install a test topic and check the creation in kafka via
+
+### Create a new KafkaTopic
+
+Now let's create a `KafkaTopic` resource with the following YAML
 ```shell
-kubectl apply -n kafkaops -f artifacts/examples/example-topic.yaml
+cat << EOF > example_topic.yaml 
+apiVersion: kafkaopscontroller.mattfanto.github.com/v1alpha1
+kind: KafkaTopic
+metadata:
+  name: example-kafkatopic
+spec:
+  topicName: example_topic_v2
+  replicas: 1
+  partitions: 1
+EOF
 ```
+
+Apply the resource to your cluster
+```shell
+kubectl apply -n kafkaops -f example_topic.yaml
+```
+
+The topic will be created automatically in Kafka the kafkaops-controller if not exists, if it already
+exists it will report any deviation from the original specification
+```shell
+kafka-topics.sh --list --bootstrap-server $BOOTSTRAP_SERVER
+```
+
+CLI example:
+![gif](/docs/imgs/cli-example.gif)
 
 
 ### Cleanup
