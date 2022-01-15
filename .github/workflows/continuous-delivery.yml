@@ -25,4 +25,4 @@ jobs:
           username: "mattfanto"
           password: ${{ secrets.GITHUB_TOKEN }}
           repository: mattfanto/kafkaops-controller
-          tags: $${env.IMAGE_TAG}}
+          tags: ${{env.IMAGE_TAG}}
