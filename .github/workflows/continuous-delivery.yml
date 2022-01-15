@@ -1,0 +1,28 @@
+name: Continuous Delivery
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build-push-docker-image:
+    name: 'Build & push docker image'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set version
+        id: vars
+        run: |
+          echo "IMAGE_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+      - name: Build Push
+        uses: docker/build-push-action@v1
+        with:
+          registry: ghcr.io
+          username: "mattfanto"
+          password: ${{ secrets.GITHUB_TOKEN }}
+          repository: mattfanto/kafkaops-controller
+          tags: $${env.IMAGE_TAG}}
