@@ -3,26 +3,94 @@ name: Continuous Delivery
 on:
   push:
     tags:
-      - '*'
+      - 'v*'
+
+env:
+  GOLANG_VERSION: '1.16.5'
+  DOCKER_REGISTRY: ghcr.io
+  DOCKER_REPO: mattfanto/kafkaops-controller
 
 jobs:
-  build-push-docker-image:
-    name: 'Build & push docker image'
+  prepare-release:
+    name: Perform automatic release on trigger ${{ github.ref }}
     runs-on: ubuntu-latest
+    env:
+      # The name of the tag as supplied by the GitHub event
+      SOURCE_TAG: ${{ github.ref }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Set version
-        id: vars
+      - name: Set env vars
         run: |
-          echo "IMAGE_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+          set -xue
+          
+          # target version used for docker image e.g. 0.1.0 or 0.1.0-rc1
+          TARGET_VERSION=${SOURCE_TAG#*v}
+          if ! echo "${TARGET_VERSION}" | egrep '^[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)*$'; then
+            echo "::error::Target version '${TARGET_VERSION}' is malformed, refusing to continue." >&2
+            exit 1
+          fi
+          
+          # original tag used for this release
+          RELEASE_TAG="${SOURCE_TAG}"
+          
+          # Whether this is a pre-release (indicated by -rc suffix)
+          PRE_RELEASE=false
+          if echo "${RELEASE_TAG}" | egrep -- '-rc[0-9]+$'; then
+            PRE_RELEASE=true
+          fi
+          
+          # Set the docker image from env  variables
+          DOCKER_IMAGE="${DOCKER_REGISTRY}/${DOCKER_REPO}"
+          
+          echo "DOCKER_IMAGE=${DOCKER_IMAGE}" >> $GITHUB_ENV
+          echo "TARGET_VERSION=${TARGET_VERSION}" >> $GITHUB_ENV
+          echo "RELEASE_TAG=${RELEASE_TAG}" >> $GITHUB_ENV
+          echo "PRE_RELEASE=${PRE_RELEASE}" >> $GITHUB_ENV
 
-      - name: Build Push
+      - name: Build push image for release
         uses: docker/build-push-action@v1
         with:
-          registry: ghcr.io
+          registry: ${{ env.DOCKER_REGISTRY }}
           username: "mattfanto"
           password: ${{ secrets.GITHUB_TOKEN }}
-          repository: mattfanto/kafkaops-controller
-          tags: ${{env.IMAGE_TAG}}
+          repository: ${{ env.DOCKER_REPO }}
+          tags: ${{env.TARGET_VERSION}}
+
+      - name: Build manifest
+        run: |
+          echo "resources: [deployment.yaml]
+          apiVersion: kustomize.config.k8s.io/v1beta1
+          kind: Kustomization
+          images:
+          - name: controller
+            newName: ${{ env.DOCKER_IMAGE }}
+            newTag: ${{ env.TARGET_VERSION }}
+          " > artifacts/kustomization.yaml
+          
+      - name: Build manifest
+        run: |
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
+          ./kustomize build ./artifacts > deployment.yaml
+
+      - name: Create GitHub release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: create_release
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          release_name: ${{env.RELEASE_TAG }}
+          prerelease: ${{ env.PRE_RELEASE }}
+
+      - name: Upload manifest file
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./deployment.yaml
+          asset_name: deployment.yaml
+          asset_content_type: application/yaml

@@ -99,18 +99,6 @@ rules:
     verbs:
       - create
       - patch
-  #  - apiGroups:
-  #      - ""
-  #    resources:
-  #      - secrets
-  #    verbs:
-  #      - create
-  #      - delete
-  #      - get
-  #      - list
-  #      - patch
-  #      - update
-  #      - watch
   - apiGroups:
       - kafkaopscontroller.mattfanto.github.com
     resources:
@@ -139,7 +127,7 @@ spec:
         control-plane: controller-manager
     spec:
       containers:
-        - image: ghcr.io/mattfanto/kafkaops-controller:0.1.1
+        - image: controller:latest
           imagePullPolicy: IfNotPresent
           name: kafkaops-controller
           args:
