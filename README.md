@@ -23,7 +23,7 @@ listen for new topic or changes to apply the desired state to your Kafka cluster
 First install the CRD, deployment and roles definition available under [artifacts/deployment.yaml](artifacts/deployment.yaml), under a new kafkaops namespace
 ```shell
 kubectl create namespace kafkaops
-kubectl apply -n kafkaops -f https://github.com/mattfanto/kafkaops-controller/releases/latest/download/deployment.yaml
+kubectl apply -n kafkaops -f https://github.com/MattFanto/kafkaops-controller/releases/latest/download/deployment.yaml
 ```
 
 
@@ -54,7 +54,31 @@ exists it will report any deviation from the original specification
 kafka-topics.sh --list --bootstrap-server $BOOTSTRAP_SERVER
 ```
 
+Topic status update will be reported will be reported in CRD Status section
+```shell
+kubectl describe kafkatopics.kafkaopscontroller.mattfanto.github.com -n kafkaops example-kafkatopic
+```
+will return
+```yaml
+...
+Status:
+  Conditions:
+    Last Transition Time:  2022-01-15T16:55:49Z
+    Message:               Topic ready and specification in sync
+    Reason:                
+    Status:                True
+    Type:                  Ready
+  Partitions:              1
+  Replicas:                1
+  Status Code:             EXISTS
+Events:
+  Type    Reason  Age                     From                 Message
+  ----    ------  ----                    ----                 -------
+  Normal  Synced  113s (x781 over 3h16m)  kafkaops-controller  KafkaTopic synced successfully
+```
+
 CLI example:
+
 ![gif](/docs/imgs/cli-example.gif)
 
 
