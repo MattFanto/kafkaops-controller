@@ -54,6 +54,7 @@ jobs:
         uses: docker/build-push-action@v1
         with:
           registry: ${{ env.DOCKER_REGISTRY }}
+          username: "mattfanto"
           password: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ env.DOCKER_REPO }}
           tags: ${{env.TARGET_VERSION}}
