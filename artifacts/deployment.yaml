@@ -73,3 +73,84 @@ spec:
     kind: KafkaTopic
     plural: kafkatopics
   scope: Namespaced
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kafkaops-controller-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kafkaops-controller-manager-role
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: kafkaops
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kafkaops-controller-manager-role
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+  #  - apiGroups:
+  #      - ""
+  #    resources:
+  #      - secrets
+  #    verbs:
+  #      - create
+  #      - delete
+  #      - get
+  #      - list
+  #      - patch
+  #      - update
+  #      - watch
+  - apiGroups:
+      - kafkaopscontroller.mattfanto.github.com
+    resources:
+      - kafkatopics
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafkaops-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+  template:
+    metadata:
+      labels:
+        control-plane: controller-manager
+    spec:
+      containers:
+        - image: ghcr.io/mattfanto/kafkaops-controller:0.1.0
+          imagePullPolicy: IfNotPresent
+          name: kafkaops-controller
+          args:
+            - -bootstrap-servers=kafka-0.kafka-headless.kafkaops.svc.cluster.local:9092
+          command:
+            - /kafkaops-controller
+          resources:
+            limits:
+              cpu: 100m
+              memory: 30Mi
+            requests:
+              cpu: 100m
+              memory: 20Mi
+      terminationGracePeriodSeconds: 10
