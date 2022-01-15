@@ -1,0 +1,32 @@
+name: Continuous Delivery
+on:
+  pull_request:
+    branches:
+      - main
+
+env:
+  # Golang version to use across CI steps
+  GOLANG_VERSION: '1.16.11'
+
+jobs:
+  build-push-docker-image:
+    name: build & push Docker image
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Golang
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+
+      - name: Download all Go modules
+        run: |
+          go mod download
+
+      - name: Check for tidyness of go.mod and go.sum
+        run: |
+          go mod tidy
+          git diff --exit-code -- .
