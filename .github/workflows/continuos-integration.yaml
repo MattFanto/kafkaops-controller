@@ -9,8 +9,8 @@ env:
   GOLANG_VERSION: '1.16.11'
 
 jobs:
-  build-push-docker-image:
-    name: build & push Docker image
+  build-test:
+    name: Build and run test
     runs-on: ubuntu-20.04
 
     steps:
@@ -30,3 +30,7 @@ jobs:
         run: |
           go mod tidy
           git diff --exit-code -- .
+
+      - name: Run test
+        run: |
+          go test -v ./
