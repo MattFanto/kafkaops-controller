@@ -32,5 +32,6 @@ jobs:
           git diff --exit-code -- .
 
       - name: Run test
+        # sdk test are temporarily disabled
         run: |
           go test -v ./
