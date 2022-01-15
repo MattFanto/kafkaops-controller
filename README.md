@@ -4,6 +4,11 @@ A Kubernetes controller managing Kafka topic defined with a CustomResourceDefini
 
 ![diagram](/docs/imgs/diagram.png)
 
+
+CLI example:
+![gif](/docs/imgs/cli-example.gif)
+
+
 **Note:** go-get or vendor this package as `github.com/mattfanto/kafkaops-controller`.
 
 ## Details
