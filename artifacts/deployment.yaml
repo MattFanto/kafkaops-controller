@@ -139,7 +139,7 @@ spec:
         control-plane: controller-manager
     spec:
       containers:
-        - image: ghcr.io/mattfanto/kafkaops-controller:0.1.0
+        - image: ghcr.io/mattfanto/kafkaops-controller:0.1.1
           imagePullPolicy: IfNotPresent
           name: kafkaops-controller
           args:
