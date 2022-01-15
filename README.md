@@ -36,8 +36,6 @@ so that generated file via `./hack/update-codegen.sh` are automatically sync in 
 
 ```shell
 kubectl create namespace kafkaops
-kubectl apply -n kafkaops -f artifcats/roles.yaml
-kubectl apply -n kafkaops -f artifcats/crd.yaml
 kubectl apply -n kafkaops -f artifcats/deployment.yaml
 kubectl apply -n kafkaops -f artifcats/examples/example-topic.yaml
 ```
