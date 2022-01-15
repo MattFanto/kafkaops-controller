@@ -50,18 +50,18 @@ jobs:
           echo "RELEASE_TAG=${RELEASE_TAG}" >> $GITHUB_ENV
           echo "PRE_RELEASE=${PRE_RELEASE}" >> $GITHUB_ENV
 
-      - name: Build push image for release
-        uses: docker/build-push-action@v1
-        with:
-          registry: ${{ env.DOCKER_REGISTRY }}
-          username: "mattfanto"
-          password: ${{ secrets.GITHUB_TOKEN }}
-          repository: ${{ env.DOCKER_REPO }}
-          tags: ${{env.TARGET_VERSION}}
+#      - name: Build push image for release
+#        uses: docker/build-push-action@v1
+#        with:
+#          registry: ${{ env.DOCKER_REGISTRY }}
+#          username: "mattfanto"
+#          password: ${{ secrets.GITHUB_TOKEN }}
+#          repository: ${{ env.DOCKER_REPO }}
+#          tags: ${{env.TARGET_VERSION}}
 
       - name: Build manifest
         run: |
-          echo "resources: [manager.yaml]
+          echo "resources: [deployment.yaml]
           apiVersion: kustomize.config.k8s.io/v1beta1
           kind: Kustomization
           images:
@@ -83,10 +83,8 @@ jobs:
         with:
           tag_name: ${{ env.TARGET_VERSION }}
           release_name: ${{env.TARGET_VERSION}}
-          draft: false
           prerelease: ${{ env.PRE_RELEASE }}
-          body: ""
-      
+
       - name: Upload manifest file
         uses: actions/upload-release-asset@v1
         env:
