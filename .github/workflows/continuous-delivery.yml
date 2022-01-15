@@ -50,14 +50,13 @@ jobs:
           echo "RELEASE_TAG=${RELEASE_TAG}" >> $GITHUB_ENV
           echo "PRE_RELEASE=${PRE_RELEASE}" >> $GITHUB_ENV
 
-#      - name: Build push image for release
-#        uses: docker/build-push-action@v1
-#        with:
-#          registry: ${{ env.DOCKER_REGISTRY }}
-#          username: "mattfanto"
-#          password: ${{ secrets.GITHUB_TOKEN }}
-#          repository: ${{ env.DOCKER_REPO }}
-#          tags: ${{env.TARGET_VERSION}}
+      - name: Build push image for release
+        uses: docker/build-push-action@v1
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ env.DOCKER_REPO }}
+          tags: ${{env.TARGET_VERSION}}
 
       - name: Build manifest
         run: |
