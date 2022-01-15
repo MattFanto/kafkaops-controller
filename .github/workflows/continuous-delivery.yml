@@ -81,8 +81,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         id: create_release
         with:
-          tag_name: ${{ env.TARGET_VERSION }}
-          release_name: ${{env.TARGET_VERSION}}
+          tag_name: ${{ env.RELEASE_TAG }}
+          release_name: ${{env.RELEASE_TAG }}
           prerelease: ${{ env.PRE_RELEASE }}
 
       - name: Upload manifest file
