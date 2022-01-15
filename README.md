@@ -30,3 +30,12 @@ export WORKSPACE_DIR=$(pwd)
 ln -s $WORKSPACE_DIR/kafkaops-controller $WORKSPACE_DIR/github.com/mattfanto/kafkaops-controller
 ```
 so that generated file via `./hack/update-codegen.sh` are automatically sync in the right folder
+
+
+## Quick start
+
+```shell
+kubectl create namespace kafkaops
+kubectl apply -n kafkaops -f artifcats/deployment.yaml
+kubectl apply -n kafkaops -f artifcats/examples/example-topic.yaml
+```
