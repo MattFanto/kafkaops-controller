@@ -19,18 +19,24 @@ listen for new topic or changes to apply the desired state to your Kafka cluster
 
 ### Installation 
 
-First install the custom resource definition available under [artifacts/examples](artifacts/examples)
+First install the CRD, deployment and roles definition available under [artifacts/deployment.yaml](artifacts/deployment.yaml)
 ```shell
-kubectl create -f artifcats/example/crd.yaml
+kubectl create namespace kafkaops
+kubectl apply -n kafkaops -f artifacts/deployment.yaml
 ```
 
-... TODO ... docker image and pod for kafkaops-controller
+You can install a test topic and check the creation in kafka via
+```shell
+kubectl apply -n kafkaops -f artifacts/examples/example-topic.yaml
+```
+
 
 ### Cleanup
 
 You can clean up the created CustomResourceDefinition with:
 ```shell
-kubectl delete crd kafkatopics.kafkaopscontroller.mattfanto.github.com
+kubectl delete -n kafkaops -f artifacts/deployment.yaml
+kubectl delete namespace kafkaops
 ```
 
 ## Notes
@@ -52,12 +58,3 @@ export WORKSPACE_DIR=$(pwd)
 ln -s $WORKSPACE_DIR/kafkaops-controller $WORKSPACE_DIR/github.com/mattfanto/kafkaops-controller
 ```
 so that generated file via `./hack/update-codegen.sh` are automatically sync in the right folder
-
-
-## Quick start
-
-```shell
-kubectl create namespace kafkaops
-kubectl apply -n kafkaops -f artifcats/deployment.yaml
-kubectl apply -n kafkaops -f artifcats/examples/example-topic.yaml
-```
