@@ -94,6 +94,46 @@ kubectl delete -n kafkaops -f artifacts/deployment.yaml
 kubectl delete namespace kafkaops
 ```
 
+
+## Usage with ARGO-CD
+
+If you are using Argo-CD for your deployment, you will be able to visualize automatically KafkaTopic resource in ARGO cd, but if you also 
+want ARGO to read and display the KafkaTopic status you need to add this Lua custom health check to your config [reference](https://argo-cd.readthedocs.io/en/stable/operator-manual/health/).
+```yaml
+argo-cd:
+  server:
+    config:
+      resource.customizations: |-
+        kafkaopscontroller.mattfanto.github.com/KafkaTopic:
+          health.lua: |
+            hs = {}
+            if obj.status ~= nil then
+              if obj.status.conditions ~= nil then
+                for i, condition in ipairs(obj.status.conditions) do
+                  if condition.type == "Ready" and condition.status == "False" then
+                    hs.status = "Degraded"
+                    hs.message = condition.message
+                    return hs
+                  end
+                  if condition.type == "Ready" and condition.status == "True" then
+                    hs.status = "Healthy"
+                    hs.message = condition.message
+                    return hs
+                  end
+                end
+              end
+            end
+
+            hs.status = "Progressing"
+            hs.message = "Waiting for certificate"
+            return hs
+```
+
+After this you can see the KafkaTopic status in Argo-CD as an example, if the deviates from the original specification
+you will see it as:
+
+![diagram](/docs/imgs/argocd-integration.png)
+
 ## Notes
 
 This is just a POC for the moment don't use it in production
