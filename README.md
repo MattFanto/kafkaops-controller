@@ -1,3 +1,6 @@
+[![Continuous Integration](https://github.com/MattFanto/kafkaops-controller/actions/workflows/continuos-integration.yaml/badge.svg)](https://github.com/MattFanto/kafkaops-controller/actions/workflows/continuos-integration.yaml)
+[![Release Version](https://img.shields.io/github/v/release/MattFanto/kafkaops-controller?label=kafkaops-controller)](https://github.com/MattFanto/kafkaops-controller/releases/latest)
+
 # kafkaops-controller
 
 A Kubernetes controller managing Kafka topic defined with a CustomResourceDefinition (CRD).
