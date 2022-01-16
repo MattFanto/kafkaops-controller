@@ -97,8 +97,8 @@ kubectl delete namespace kafkaops
 
 ## Usage with ARGO-CD
 
-If you are using Argo-CD for your deployment, you will be able to visualize automatically KafkaTopic resource in ARGO cd, but if you also 
-want ARGO to read and display the KafkaTopic status you need to add this Lua custom health check to your config [reference](https://argo-cd.readthedocs.io/en/stable/operator-manual/health/).
+If you are using Argo CD for your deployment, you will be able to visualize automatically KafkaTopic resource in Argo CD.
+If you also want Argo CD to read and display the KafkaTopic status you need to add this Lua custom health check to your config [reference](https://argo-cd.readthedocs.io/en/stable/operator-manual/health/).
 ```yaml
 argo-cd:
   server:
